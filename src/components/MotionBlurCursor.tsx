@@ -193,16 +193,27 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       ctx.translate(x, y);
       ctx.rotate(angle);
 
-      // Create a curved path using quadratic bezier curves
-      const curveOffset = curveAmount * radiusX * 0.3;
+      // Create a smooth banana shape
+      const length = Math.min(radiusX, 12); // Keep it short
+      const thickness = radiusY;
+      const curve = curveAmount * 6; // Visible curve
       
       ctx.beginPath();
-      // Start at the left side
-      ctx.moveTo(-radiusX, 0);
-      // Curve to the top with bend
-      ctx.quadraticCurveTo(0, -radiusY - curveOffset, radiusX, 0);
-      // Curve back to the bottom with bend
-      ctx.quadraticCurveTo(0, radiusY + curveOffset, -radiusX, 0);
+      
+      // Draw banana shape using quadratic curves
+      // Top edge (curved outward)
+      ctx.moveTo(-length, curve * 0.3);
+      ctx.quadraticCurveTo(0, -thickness * 1.5 + curve, length, curve * 0.3);
+      
+      // Right rounded end
+      ctx.arc(length, curve * 0.3, thickness * 0.6, -Math.PI * 0.5, Math.PI * 0.5);
+      
+      // Bottom edge (curved inward, creating banana shape)
+      ctx.quadraticCurveTo(0, thickness * 0.8 + curve * 0.5, -length, curve * 0.3);
+      
+      // Left rounded end
+      ctx.arc(-length, curve * 0.3, thickness * 0.6, Math.PI * 0.5, -Math.PI * 0.5);
+      
       ctx.closePath();
 
       if (filled) {
