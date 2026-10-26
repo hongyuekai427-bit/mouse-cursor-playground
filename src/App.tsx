@@ -1,196 +1,207 @@
-import MotionBlurCursor from "./components/MotionBlurCursor";
+import { useState, useRef, useEffect } from "react";
+import MotionBlurCursor, { CursorConfig } from "./components/MotionBlurCursor";
 
 export default function App() {
+  const [config, setConfig] = useState<CursorConfig>({
+    trailMultiplier: 2,
+    ellipseMultiplier: 1,
+    backgroundColor: "#000000",
+  });
+  const [expanded, setExpanded] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Close panel when clicking outside
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setExpanded(false);
+      }
+    };
+    if (expanded) {
+      document.addEventListener("mousedown", handleClick);
+      return () => document.removeEventListener("mousedown", handleClick);
+    }
+  }, [expanded]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white cursor-none select-none">
-      <MotionBlurCursor />
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: config.backgroundColor,
+        cursor: "none",
+      }}
+    >
+      <MotionBlurCursor config={config} />
 
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-slate-900/60 border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center">
-              <span className="text-sm font-bold">M</span>
-            </div>
-            <span className="font-semibold text-lg">MotionBlur</span>
-          </div>
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-slate-300 hover:text-white transition-colors cursor-none">Features</a>
-            <a href="#demo" className="text-sm text-slate-300 hover:text-white transition-colors cursor-none">Demo</a>
-            <a href="#about" className="text-sm text-slate-300 hover:text-white transition-colors cursor-none">About</a>
-          </div>
+      {/* Expandable top bar */}
+      <div
+        ref={panelRef}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 10000,
+          pointerEvents: "auto",
+        }}
+      >
+        {/* Collapsed tab */}
+        <div
+          onClick={() => setExpanded(!expanded)}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            padding: "6px 16px",
+            backgroundColor: expanded ? "rgba(20, 20, 20, 0.95)" : "rgba(20, 20, 20, 0.7)",
+            borderBottomLeftRadius: "8px",
+            borderBottomRightRadius: "8px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            transition: "background-color 0.2s",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderTop: "none",
+          }}
+        >
+          <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
+            {expanded ? "▲ HIDE" : "▼ CONTROLS"}
+          </span>
         </div>
-      </nav>
 
-      {/* Hero Section */}
-      <section className="min-h-screen flex items-center justify-center px-6 pt-20">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-8">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-            <span className="text-sm text-indigo-300">Move your cursor around</span>
-          </div>
-          <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-6">
-            <span className="bg-gradient-to-r from-white via-indigo-200 to-indigo-400 bg-clip-text text-transparent">
-              Directional Motion Blur
-            </span>
-          </h1>
-          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            A velocity-based cursor trail that follows your movement direction.
-            Move fast for longer trails, slow for subtle effects. Try diagonal movements, sharp turns, and rapid stops.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <button className="px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-medium transition-colors cursor-none">
-              Get Started
-            </button>
-            <button className="px-6 py-3 rounded-xl border border-white/20 hover:border-white/40 text-white font-medium transition-colors cursor-none">
-              View Source
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">How It Works</h2>
-          <p className="text-slate-400 text-center max-w-xl mx-auto mb-16">
-            Built with Canvas 2D, velocity tracking, and directional rendering for smooth, performant motion blur.
-          </p>
-          <div className="grid md:grid-cols-3 gap-8">
-            <FeatureCard
-              icon="🎯"
-              title="Directional Tracking"
-              description="The blur trail follows your cursor's actual movement direction — horizontal, vertical, or diagonal."
+        {/* Expanded panel */}
+        {expanded && (
+          <div
+            style={{
+              position: "absolute",
+              top: "32px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              backgroundColor: "rgba(15, 15, 15, 0.95)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "10px",
+              padding: "20px 24px",
+              minWidth: "320px",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            <SliderRow
+              label="Trail Length"
+              value={config.trailMultiplier}
+              min={0.2}
+              max={8}
+              step={0.1}
+              onChange={(v) => setConfig({ ...config, trailMultiplier: v })}
             />
-            <FeatureCard
-              icon="⚡"
-              title="Velocity Responsive"
-              description="Trail length scales with cursor speed. Fast movements produce longer trails, slow movements stay subtle."
+            <SliderRow
+              label="Ellipse Stretch"
+              value={config.ellipseMultiplier}
+              min={0.1}
+              max={4}
+              step={0.1}
+              onChange={(v) => setConfig({ ...config, ellipseMultiplier: v })}
             />
-            <FeatureCard
-              icon="🎨"
-              title="Smooth Fading"
-              description="Natural opacity falloff with no ghost images. Trail disappears smoothly when cursor stops."
-            />
-            <FeatureCard
-              icon="📐"
-              title="Angle Interpolation"
-              description="Movement angle is smoothed to prevent jarring direction changes during sharp turns."
-            />
-            <FeatureCard
-              icon="🖥️"
-              title="HiDPI Support"
-              description="Correctly handles device pixel ratio for crisp rendering on Retina and high-DPI displays."
-            />
-            <FeatureCard
-              icon="♿"
-              title="Accessible"
-              description="Respects prefers-reduced-motion. Pointer events pass through. No interaction interference."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Demo Section */}
-      <section id="demo" className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">Try It Out</h2>
-          <p className="text-slate-400 text-center max-w-xl mx-auto mb-12">
-            Move your cursor through different areas. Notice how the trail direction, length, and opacity change.
-          </p>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="p-8 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/30 transition-colors cursor-none">
-              <h3 className="text-xl font-semibold mb-3">Fast Sweeps</h3>
-              <p className="text-slate-400 text-sm">
-                Move your cursor quickly across this area. The trail should extend significantly in the direction of movement.
-              </p>
-            </div>
-            <div className="p-8 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/30 transition-colors cursor-none">
-              <h3 className="text-xl font-semibold mb-3">Sharp Turns</h3>
-              <p className="text-slate-400 text-sm">
-                Try making quick direction changes. The angle interpolation keeps the trail smooth during transitions.
-              </p>
-            </div>
-            <div className="p-8 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/30 transition-colors cursor-none">
-              <h3 className="text-xl font-semibold mb-3">Slow Movement</h3>
-              <p className="text-slate-400 text-sm">
-                Move slowly to see the subtle trail effect. Below the velocity threshold, no trail appears.
-              </p>
-            </div>
-            <div className="p-8 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/30 transition-colors cursor-none">
-              <h3 className="text-xl font-semibold mb-3">Stop & Fade</h3>
-              <p className="text-slate-400 text-sm">
-                Stop moving suddenly. Watch the trail fade out naturally without leaving ghost images.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Interactive Area */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative p-12 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-white/10 overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.1),transparent_70%)]"></div>
-            <div className="relative text-center">
-              <h3 className="text-2xl font-bold mb-4">Interactive Playground</h3>
-              <p className="text-slate-400 mb-8">
-                Draw patterns in this area. The motion blur responds to every direction change.
-              </p>
-              <div className="h-48 rounded-xl border border-white/10 bg-black/20 flex items-center justify-center">
-                <p className="text-slate-500 text-sm">Move your cursor here</p>
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>BACKGROUND</span>
+                <span style={{ color: "#6366f1", fontSize: "11px", fontFamily: "monospace" }}>{config.backgroundColor}</span>
+              </div>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {["#000000", "#0a0a0a", "#111111", "#1a1a1a", "#ffffff", "#0f172a", "#1e1b4b", "#18181b"].map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setConfig({ ...config, backgroundColor: color })}
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "6px",
+                      backgroundColor: color,
+                      border: config.backgroundColor === color ? "2px solid #6366f1" : "1px solid rgba(255,255,255,0.15)",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  />
+                ))}
+                <label
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    position: "relative",
+                  }}
+                >
+                  <span style={{ fontSize: "12px", color: "#9ca3af" }}>+</span>
+                  <input
+                    type="color"
+                    value={config.backgroundColor}
+                    onChange={(e) => setConfig({ ...config, backgroundColor: e.target.value })}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      opacity: 0,
+                      cursor: "pointer",
+                    }}
+                  />
+                </label>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* About Section */}
-      <section id="about" className="py-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Technical Details</h2>
-          <p className="text-slate-400 max-w-2xl mx-auto mb-12">
-            Implementation uses a Canvas 2D overlay with a bounded position history ring buffer,
-            velocity smoothing via exponential moving average, and directional trail rendering
-            with interpolated angle transitions.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <StatCard value="60fps" label="Target FPS" />
-            <StatCard value="24" label="Max Samples" />
-            <StatCard value="32" label="History Buffer" />
-            <StatCard value="0" label="Dependencies" />
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-white/10 py-8 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-slate-500">Directional Motion Blur Cursor • Canvas 2D Implementation</p>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-500">React + Vite + Tailwind CSS</span>
-          </div>
-        </div>
-      </footer>
+        )}
+      </div>
     </div>
   );
 }
 
-function FeatureCard({ icon, title, description }: { icon: string; title: string; description: string }) {
+function SliderRow({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (v: number) => void;
+}) {
   return (
-    <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/30 transition-all duration-300 cursor-none group">
-      <div className="text-3xl mb-4">{icon}</div>
-      <h3 className="text-lg font-semibold mb-2 group-hover:text-indigo-300 transition-colors">{title}</h3>
-      <p className="text-sm text-slate-400 leading-relaxed">{description}</p>
-    </div>
-  );
-}
-
-function StatCard({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="p-4 rounded-xl bg-white/5 border border-white/10 cursor-none">
-      <div className="text-2xl font-bold text-indigo-400">{value}</div>
-      <div className="text-xs text-slate-500 mt-1">{label}</div>
+    <div style={{ marginBottom: "14px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+        <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
+          {label.toUpperCase()}
+        </span>
+        <span style={{ color: "#6366f1", fontSize: "11px", fontFamily: "monospace" }}>{value.toFixed(1)}x</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        style={{
+          width: "100%",
+          height: "4px",
+          appearance: "none",
+          background: "rgba(255,255,255,0.1)",
+          borderRadius: "2px",
+          outline: "none",
+          cursor: "pointer",
+          accentColor: "#6366f1",
+        }}
+      />
     </div>
   );
 }
