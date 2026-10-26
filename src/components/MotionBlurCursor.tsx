@@ -183,9 +183,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       config: CursorConfig
     ) => {
       const speed = state.smoothSpeed;
-      const angle = state.angle;
-      const curvature = state.smoothCurvature;
       const multiplier = config.trailMultiplier;
+      const h = state.history;
 
       const cursorRadius = 3;
       // Trail length is purely speed-based
@@ -193,21 +192,49 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
       if (trailLength < 2) return;
 
+      // Use the 2nd cache position as the curve target
+      // The trail bends toward the 2nd most recent position
+      let targetX = state.x;
+      let targetY = state.y;
+      if (h.length >= 2) {
+        // 2nd cache is the middle/second-to-last position
+        const secondCache = h.length >= 3 ? h[h.length - 2] : h[0];
+        targetX = secondCache.x;
+        targetY = secondCache.y;
+      }
+
+      // Calculate direction from current to 2nd cache (this is where trail should bend toward)
+      const toTargetX = targetX - state.x;
+      const toTargetY = targetY - state.y;
+      const toTargetDist = Math.sqrt(toTargetX * toTargetX + toTargetY * toTargetY);
+
+      // If we have a valid target, bend the trail toward it
+      let bendX = 0;
+      let bendY = 0;
+      if (toTargetDist > 0.5) {
+        // Normalize and scale the bend
+        const bendStrength = Math.min(1, toTargetDist / 30);
+        bendX = (toTargetX / toTargetDist) * bendStrength;
+        bendY = (toTargetY / toTargetDist) * bendStrength;
+      }
+
       const numSamples = Math.min(18, Math.max(4, Math.floor(trailLength / 3)));
 
+      // Base direction: opposite of velocity (trail extends behind)
+      const angle = state.angle;
       const backX = -Math.cos(angle);
       const backY = -Math.sin(angle);
-      const perpX = -backY;
-      const perpY = backX;
 
-      // Draw fading circles along curved path
+      // Draw fading circles along curved path that bends toward 2nd cache
       for (let i = 0; i < numSamples; i++) {
         const t = (i + 1) / (numSamples + 1);
         const distance = t * trailLength;
 
-        const curveOffset = curvature * distance * distance * 0.002;
-        const px = state.x + backX * distance + perpX * curveOffset;
-        const py = state.y + backY * distance + perpY * curveOffset;
+        // Blend between straight-back direction and bend toward 2nd cache
+        // The bend increases along the trail (more curve further back)
+        const bendFactor = t * t; // Quadratic bend
+        const px = state.x + backX * distance + bendX * distance * bendFactor * 0.5;
+        const py = state.y + backY * distance + bendY * distance * bendFactor * 0.5;
 
         const alpha = (1 - t * t) * 0.7 * Math.min(1, speed / 3);
         const radius = cursorRadius * (1 - t * 0.6);
@@ -220,17 +247,17 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.fill();
       }
 
-      // Draw curved gradient streak
+      // Draw curved gradient streak using 2nd cache as control point
       const endDistance = trailLength;
-      const endCurveOffset = curvature * endDistance * endDistance * 0.002;
-      const endX = state.x + backX * endDistance + perpX * endCurveOffset;
-      const endY = state.y + backY * endDistance + perpY * endCurveOffset;
+      const endX = state.x + backX * endDistance + bendX * endDistance * 0.5;
+      const endY = state.y + backY * endDistance + bendY * endDistance * 0.5;
 
-      const midT = 0.5;
-      const midDistance = midT * trailLength;
-      const midCurveOffset = curvature * midDistance * midDistance * 0.002;
-      const cpX = state.x + backX * midDistance + perpX * midCurveOffset;
-      const cpY = state.y + backY * midDistance + perpY * midCurveOffset;
+      // Control point: blend between straight line and 2nd cache position
+      const cpT = 0.4; // Control point at 40% along trail
+      const cpDistance = cpT * trailLength;
+      const cpBendFactor = cpT * cpT;
+      const cpX = state.x + backX * cpDistance + bendX * cpDistance * cpBendFactor * 0.5;
+      const cpY = state.y + backY * cpDistance + bendY * cpDistance * cpBendFactor * 0.5;
 
       const gradient = ctx.createLinearGradient(state.x, state.y, endX, endY);
       const baseAlpha = Math.min(0.8, speed * 0.08);
@@ -274,6 +301,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const ringRadius = 10;
       const config = configRef.current;
       const multiplier = config.ellipseMultiplier;
+      const h = state.history;
 
       // Stretch based on speed
       const stretchThreshold = 8;
@@ -284,10 +312,33 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         stretchAmount = 1 + t * 1.5 * multiplier;
       }
 
+      // Calculate bend angle toward 2nd cache position
+      let bendAngle = 0;
+      if (h.length >= 2 && stretchAmount > 1.05) {
+        const secondCache = h.length >= 3 ? h[h.length - 2] : h[0];
+        const dx = secondCache.x - x;
+        const dy = secondCache.y - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0.5) {
+          // Angle from current to 2nd cache
+          const targetAngle = Math.atan2(dy, dx);
+          // Calculate relative angle difference
+          let angleDiff = targetAngle - angle;
+          // Normalize to -PI to PI
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+          // Bend strength based on distance and stretch
+          const bendStrength = Math.min(1, dist / 20) * Math.min(1, (stretchAmount - 1) / 1.5);
+          bendAngle = angleDiff * bendStrength * 0.4;
+        }
+      }
+
       if (stretchAmount > 1.05) {
         ctx.save();
         ctx.translate(x, y);
-        ctx.rotate(angle);
+        ctx.rotate(angle + bendAngle);
 
         const skewX = curvature * 0.3 * (stretchAmount - 1);
         ctx.transform(1, 0, skewX, 1, 0, 0);
