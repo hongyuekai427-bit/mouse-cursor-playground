@@ -16,7 +16,7 @@ export default function MotionBlurCursor() {
     y: 0,
     visible: false,
     hasMoved: false,
-    // Position history buffer for 50ms windowed velocity calculation
+    // Position history buffer (max 3 points)
     history: [] as TimestampedPos[],
     // Smoothed velocity (px/ms)
     vx: 0,
@@ -27,6 +27,8 @@ export default function MotionBlurCursor() {
     angle: 0,
     // Cumulative distance traveled (decays over time)
     distanceTraveled: 0,
+    // Smoothed curvature (-1 to 1, positive = turning left, negative = turning right)
+    smoothCurvature: 0,
   });
 
   useEffect(() => {
@@ -68,9 +70,8 @@ export default function MotionBlurCursor() {
       // Add to history buffer
       state.history.push({ x: e.clientX, y: e.clientY, t: now });
 
-      // Keep only last 100ms of history (buffer for 50ms window + margin)
-      const cutoff = now - 100;
-      while (state.history.length > 0 && state.history[0].t < cutoff) {
+      // Keep only last 3 positions (max window for direction calculation)
+      while (state.history.length > 3) {
         state.history.shift();
       }
     };
@@ -89,50 +90,51 @@ export default function MotionBlurCursor() {
         state.vy = 0;
         state.smoothSpeed = 0;
         state.distanceTraveled = 0;
+        state.smoothCurvature = 0;
         state.history.length = 0;
       }
     };
 
-    // Calculate velocity from 50ms window of history
-    const calculateWindowedVelocity = (now: number) => {
-      const windowStart = now - 50; // 50ms window
+    // Calculate velocity from 3-point window of history
+    const calculateWindowedVelocity = () => {
+      const h = state.history;
+      if (h.length < 2) return { vx: 0, vy: 0, curvature: 0 };
 
-      // Find positions at start and end of window
-      let startPos: TimestampedPos | null = null;
-      let endPos: TimestampedPos | null = null;
+      // Use the oldest and newest points in the 3-point window
+      const oldest = h[0];
+      const newest = h[h.length - 1];
 
-      for (let i = state.history.length - 1; i >= 0; i--) {
-        const p = state.history[i];
-        if (p.t >= windowStart) {
-          endPos = p;
-        }
-        if (p.t <= windowStart && !startPos) {
-          startPos = p;
-          break;
+      const dt = newest.t - oldest.t;
+      if (dt < 0.5) return { vx: 0, vy: 0, curvature: 0 };
+
+      const vx = (newest.x - oldest.x) / dt;
+      const vy = (newest.y - oldest.y) / dt;
+
+      // Calculate curvature from the 3 points (if we have all 3)
+      let curvature = 0;
+      if (h.length === 3) {
+        const p0 = h[0];
+        const p1 = h[1];
+        const p2 = h[2];
+
+        // Vectors between consecutive points
+        const v1x = p1.x - p0.x;
+        const v1y = p1.y - p0.y;
+        const v2x = p2.x - p1.x;
+        const v2y = p2.y - p1.y;
+
+        // Cross product gives us the turning amount
+        const cross = v1x * v2y - v1y * v2x;
+        const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+        const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+
+        if (mag1 > 0.1 && mag2 > 0.1) {
+          // Normalize curvature: cross / (mag1 * mag2) gives sin(angle)
+          curvature = cross / (mag1 * mag2);
         }
       }
 
-      // If no start position, use oldest in window
-      if (!startPos) {
-        for (let i = 0; i < state.history.length; i++) {
-          if (state.history[i].t >= windowStart) {
-            startPos = state.history[i];
-            break;
-          }
-        }
-      }
-
-      if (!startPos || !endPos || startPos === endPos) {
-        return { vx: 0, vy: 0 };
-      }
-
-      const dt = endPos.t - startPos.t;
-      if (dt < 1) return { vx: 0, vy: 0 };
-
-      return {
-        vx: (endPos.x - startPos.x) / dt,
-        vy: (endPos.y - startPos.y) / dt,
-      };
+      return { vx, vy, curvature };
     };
 
     // Animation loop
@@ -149,17 +151,20 @@ export default function MotionBlurCursor() {
       }
 
       if (reducedMotionRef.current) {
-        drawCursor(ctx, state.x, state.y, 0, 0);
+        drawCursor(ctx, state.x, state.y, 0, 0, 0);
         animFrameRef.current = requestAnimationFrame(animate);
         return;
       }
 
-      // Calculate velocity from 50ms window
-      const { vx: rawVx, vy: rawVy } = calculateWindowedVelocity(now);
+      // Calculate velocity from 3-point window
+      const { vx: rawVx, vy: rawVy, curvature } = calculateWindowedVelocity();
 
       // Smooth velocity
       state.vx = state.vx * 0.7 + rawVx * 0.3;
       state.vy = state.vy * 0.7 + rawVy * 0.3;
+
+      // Smooth curvature
+      state.smoothCurvature = state.smoothCurvature * 0.6 + curvature * 0.4;
 
       // Calculate speed (convert px/ms to px/frame at 60fps)
       const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy) * 16.67;
@@ -193,19 +198,20 @@ export default function MotionBlurCursor() {
         drawDirectionalTrail(ctx, state);
       }
 
-      // Draw cursor (with stretch when moving fast)
-      drawCursor(ctx, state.x, state.y, state.angle, state.smoothSpeed);
+      // Draw cursor (with stretch and curvature when moving fast)
+      drawCursor(ctx, state.x, state.y, state.angle, state.smoothSpeed, state.smoothCurvature);
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
 
-    // Draw directional trail
+    // Draw directional trail with curvature
     const drawDirectionalTrail = (
       ctx: CanvasRenderingContext2D,
       state: typeof stateRef.current
     ) => {
       const speed = state.smoothSpeed;
       const angle = state.angle;
+      const curvature = state.smoothCurvature;
 
       // Trail length based on distance traveled
       const cursorRadius = 3;
@@ -219,13 +225,20 @@ export default function MotionBlurCursor() {
       const backX = -Math.cos(angle);
       const backY = -Math.sin(angle);
 
-      // Draw fading circles
+      // Perpendicular direction for curvature offset
+      const perpX = -backY; // 90 degrees rotated
+      const perpY = backX;
+
+      // Draw fading circles along a curved path
       for (let i = 0; i < numSamples; i++) {
         const t = (i + 1) / (numSamples + 1);
         const distance = t * trailLength;
 
-        const px = state.x + backX * distance;
-        const py = state.y + backY * distance;
+        // Curvature offset increases quadratically along the trail
+        const curveOffset = curvature * distance * distance * 0.003;
+
+        const px = state.x + backX * distance + perpX * curveOffset;
+        const py = state.y + backY * distance + perpY * curveOffset;
 
         const alpha = (1 - t * t) * 0.7 * Math.min(1, speed / 3);
         const radius = cursorRadius * (1 - t * 0.6);
@@ -238,9 +251,18 @@ export default function MotionBlurCursor() {
         ctx.fill();
       }
 
-      // Draw gradient streak
-      const endX = state.x + backX * trailLength;
-      const endY = state.y + backY * trailLength;
+      // Draw curved gradient streak using quadratic bezier
+      const endDistance = trailLength;
+      const endCurveOffset = curvature * endDistance * endDistance * 0.003;
+      const endX = state.x + backX * endDistance + perpX * endCurveOffset;
+      const endY = state.y + backY * endDistance + perpY * endCurveOffset;
+
+      // Control point at middle of trail with curvature
+      const midT = 0.5;
+      const midDistance = midT * trailLength;
+      const midCurveOffset = curvature * midDistance * midDistance * 0.003;
+      const cpX = state.x + backX * midDistance + perpX * midCurveOffset;
+      const cpY = state.y + backY * midDistance + perpY * midCurveOffset;
 
       const gradient = ctx.createLinearGradient(state.x, state.y, endX, endY);
       const baseAlpha = Math.min(0.8, speed * 0.1);
@@ -251,7 +273,7 @@ export default function MotionBlurCursor() {
       const lineWidth = Math.max(3, trailLength * 0.5);
       ctx.beginPath();
       ctx.moveTo(state.x, state.y);
-      ctx.lineTo(endX, endY);
+      ctx.quadraticCurveTo(cpX, cpY, endX, endY);
       ctx.strokeStyle = gradient;
       ctx.lineWidth = lineWidth;
       ctx.lineCap = "round";
@@ -266,20 +288,21 @@ export default function MotionBlurCursor() {
 
       ctx.beginPath();
       ctx.moveTo(state.x, state.y);
-      ctx.lineTo(endX, endY);
+      ctx.quadraticCurveTo(cpX, cpY, endX, endY);
       ctx.strokeStyle = coreGradient;
       ctx.lineWidth = lineWidth * 0.4;
       ctx.lineCap = "round";
       ctx.stroke();
     };
 
-    // Draw cursor with optional stretch/blur based on speed
+    // Draw cursor with optional stretch/blur based on speed and curvature
     const drawCursor = (
       ctx: CanvasRenderingContext2D,
       x: number,
       y: number,
       angle: number,
-      speed: number
+      speed: number,
+      curvature: number
     ) => {
       const baseRadius = 3;
       const ringRadius = 10;
@@ -293,10 +316,14 @@ export default function MotionBlurCursor() {
         : 1;
 
       if (stretchAmount > 1.05 && speed > stretchThreshold) {
-        // Draw stretched cursor (ellipse)
+        // Draw stretched cursor (ellipse) with curvature skew
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
+
+        // Apply skew based on curvature (makes ellipse lean into the turn)
+        const skewX = curvature * 0.3 * (stretchAmount - 1);
+        ctx.transform(1, 0, skewX, 1, 0, 0);
 
         // Stretched inner dot
         ctx.beginPath();
