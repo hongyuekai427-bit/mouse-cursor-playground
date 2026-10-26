@@ -150,12 +150,13 @@ export default function MotionBlurCursor() {
       const speed = state.smoothSpeed;
       const angle = state.angle;
 
-      // Trail length based on speed
-      const trailLength = Math.min(100, speed * 4);
+      // Trail length is 2x cursor radius
+      const cursorRadius = 3;
+      const trailLength = cursorRadius * 2;
 
       if (trailLength < 2) return;
 
-      const numSamples = Math.min(25, Math.max(5, Math.floor(trailLength / 3)));
+      const numSamples = 5;
 
       // Direction behind cursor
       const backX = -Math.cos(angle);
@@ -170,7 +171,7 @@ export default function MotionBlurCursor() {
         const py = state.y + backY * distance;
 
         const alpha = (1 - t * t) * 0.7 * Math.min(1, speed / 3);
-        const radius = 8 * (1 - t * 0.6);
+        const radius = 3 * (1 - t * 0.6);
 
         if (alpha < 0.02 || radius < 0.3) continue;
 
@@ -194,7 +195,7 @@ export default function MotionBlurCursor() {
       ctx.moveTo(state.x, state.y);
       ctx.lineTo(endX, endY);
       ctx.strokeStyle = gradient;
-      ctx.lineWidth = 14;
+      ctx.lineWidth = 6;
       ctx.lineCap = "round";
       ctx.stroke();
 
@@ -209,7 +210,7 @@ export default function MotionBlurCursor() {
       ctx.moveTo(state.x, state.y);
       ctx.lineTo(endX, endY);
       ctx.strokeStyle = coreGradient;
-      ctx.lineWidth = 5;
+      ctx.lineWidth = 2.5;
       ctx.lineCap = "round";
       ctx.stroke();
     };
@@ -218,15 +219,15 @@ export default function MotionBlurCursor() {
     const drawCursor = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
       // Inner dot
       ctx.beginPath();
-      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(99, 102, 241, 1)";
       ctx.fill();
 
       // Outer ring
       ctx.beginPath();
-      ctx.arc(x, y, 20, 0, Math.PI * 2);
+      ctx.arc(x, y, 10, 0, Math.PI * 2);
       ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
     };
 
