@@ -178,6 +178,45 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       animFrameRef.current = requestAnimationFrame(animate);
     };
 
+    // Draw a curved/banana-shaped cursor
+    const drawCurvedDot = (
+      ctx: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      angle: number,
+      radiusX: number,
+      radiusY: number,
+      curveAmount: number,
+      filled: boolean
+    ) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+
+      // Create a curved path using quadratic bezier curves
+      const curveOffset = curveAmount * radiusX * 0.3;
+      
+      ctx.beginPath();
+      // Start at the left side
+      ctx.moveTo(-radiusX, 0);
+      // Curve to the top with bend
+      ctx.quadraticCurveTo(0, -radiusY - curveOffset, radiusX, 0);
+      // Curve back to the bottom with bend
+      ctx.quadraticCurveTo(0, radiusY + curveOffset, -radiusX, 0);
+      ctx.closePath();
+
+      if (filled) {
+        ctx.fillStyle = "rgba(99, 102, 241, 1)";
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    };
+
     const drawCursor = (
       ctx: CanvasRenderingContext2D,
       x: number,
@@ -257,54 +296,13 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const ringY = state.ringY;
 
       if (stretchAmount > 1.05) {
-        // Calculate perpendicular offset for visual bend
-        const bendOffset = bendAngle * 3;
-        const perpAngle = angle + Math.PI / 2;
-        const offsetX = Math.cos(perpAngle) * bendOffset;
-        const offsetY = Math.sin(perpAngle) * bendOffset;
-        
-        // Draw stretched inner dot at exact cursor position (0.5x outer stretch)
-        ctx.save();
-        ctx.translate(x + offsetX * 0.5, y + offsetY * 0.5);
-        ctx.rotate(angle + bendAngle);
+        // Draw curved inner dot
+        const innerCurveAmount = bendAngle * 0.5;
+        drawCurvedDot(ctx, x, y, angle, baseRadius * innerStretchAmount, baseRadius, innerCurveAmount, true);
 
-        const skewX = bendAngle * 0.5;
-        ctx.transform(1, 0, skewX, 1, 0, 0);
-
-        ctx.beginPath();
-        ctx.ellipse(0, 0, baseRadius * innerStretchAmount, baseRadius, 0, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(99, 102, 241, 1)";
-        ctx.fill();
-
-        ctx.restore();
-
-        // Draw stretched outer ring with delay
-        ctx.save();
-        ctx.translate(ringX + offsetX, ringY + offsetY);
-        ctx.rotate(angle + bendAngle);
-
-        const ringSkewX = bendAngle * 0.5;
-        ctx.transform(1, 0, ringSkewX, 1, 0, 0);
-
-        ctx.beginPath();
-        ctx.ellipse(0, 0, ringRadius * stretchAmount, ringRadius, 0, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        const blurLength = baseRadius * (stretchAmount - 1) * 3;
-        if (blurLength > 1) {
-          const blurGradient = ctx.createLinearGradient(-blurLength, 0, 0, 0);
-          blurGradient.addColorStop(0, "rgba(99, 102, 241, 0)");
-          blurGradient.addColorStop(1, "rgba(99, 102, 241, 0.4)");
-
-          ctx.beginPath();
-          ctx.ellipse(-blurLength * 0.5, 0, blurLength * 0.5, baseRadius * 0.8, 0, 0, Math.PI * 2);
-          ctx.fillStyle = blurGradient;
-          ctx.fill();
-        }
-
-        ctx.restore();
+        // Draw curved outer ring with delay
+        const ringCurveAmount = bendAngle;
+        drawCurvedDot(ctx, ringX, ringY, angle, ringRadius * stretchAmount, ringRadius, ringCurveAmount, false);
       } else {
         // Draw inner dot at exact cursor position
         ctx.beginPath();
