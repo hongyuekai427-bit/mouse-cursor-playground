@@ -223,6 +223,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         const t = Math.min(1, (speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold));
         stretchAmount = 1 + t * 1.5 * multiplier;
       }
+      
+      // Inner dot stretches at 0.5x the outer ring
+      const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
       // Calculate bend angle: 2nd cache bends toward latest position
       let bendAngle = 0;
@@ -255,16 +258,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const ringY = state.ringY;
 
       if (stretchAmount > 1.05) {
-        // Draw stretched inner dot at exact cursor position
+        // Draw stretched inner dot at exact cursor position (0.5x outer stretch)
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle + bendAngle);
 
-        const skewX = curvature * 0.3 * (stretchAmount - 1);
+        const skewX = curvature * 0.3 * (innerStretchAmount - 1);
         ctx.transform(1, 0, skewX, 1, 0, 0);
 
         ctx.beginPath();
-        ctx.ellipse(0, 0, baseRadius * stretchAmount, baseRadius, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, baseRadius * innerStretchAmount, baseRadius, 0, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(99, 102, 241, 1)";
         ctx.fill();
 
