@@ -125,8 +125,20 @@ export default function MotionBlurCursor() {
       // Add to distance traveled
       state.distanceTraveled += speed;
 
-      // Decay distance over time
-      state.distanceTraveled *= 0.9;
+      // Decay distance over time - much slower decay at low speeds
+      // Speed is in px/frame (at 60fps)
+      // When speed < 5px/frame, decay very slowly to keep trail visible
+      let decayFactor: number;
+      if (speed < 1) {
+        decayFactor = 0.99; // Very slow decay when nearly stationary
+      } else if (speed < 5) {
+        decayFactor = 0.97; // Slow decay at low speeds
+      } else if (speed < 15) {
+        decayFactor = 0.92; // Medium decay
+      } else {
+        decayFactor = 0.85; // Faster decay at high speeds
+      }
+      state.distanceTraveled *= decayFactor;
 
       // Smooth speed
       state.smoothSpeed = state.smoothSpeed * 0.85 + speed * 0.15;
@@ -141,7 +153,7 @@ export default function MotionBlurCursor() {
       state.vy *= 0.92;
 
       // Draw trail
-      if (state.smoothSpeed > 0.5) {
+      if (state.smoothSpeed > 0.1 || state.distanceTraveled > 2) {
         drawDirectionalTrail(ctx, state);
       }
 
@@ -164,8 +176,6 @@ export default function MotionBlurCursor() {
       const minTrailLength = cursorRadius * 2;
       const maxTrailLength = cursorRadius * 10;
       const trailLength = Math.min(maxTrailLength, Math.max(minTrailLength, state.distanceTraveled * 0.5));
-
-      if (trailLength < 2) return;
 
       const numSamples = Math.min(15, Math.max(5, Math.floor(trailLength / 2)));
 
