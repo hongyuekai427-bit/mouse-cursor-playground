@@ -178,7 +178,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       animFrameRef.current = requestAnimationFrame(animate);
     };
 
-    // Draw a curved/banana-shaped cursor
+    // Draw a curved cursor as a thick curved line
     const drawCurvedDot = (
       ctx: CanvasRenderingContext2D,
       x: number,
@@ -193,37 +193,19 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       ctx.translate(x, y);
       ctx.rotate(angle);
 
-      // Create a smooth banana shape
-      const length = Math.min(radiusX, 12); // Keep it short
-      const thickness = radiusY;
-      const curve = curveAmount * 6; // Visible curve
+      // Simple curved line (like a banana/comma)
+      const length = Math.min(radiusX, 10);
+      const curve = curveAmount * 5;
+      const thickness = filled ? radiusY * 2 : radiusY * 2.5;
       
       ctx.beginPath();
+      ctx.moveTo(-length, curve);
+      ctx.quadraticCurveTo(0, -curve, length, curve);
       
-      // Draw banana shape using quadratic curves
-      // Top edge (curved outward)
-      ctx.moveTo(-length, curve * 0.3);
-      ctx.quadraticCurveTo(0, -thickness * 1.5 + curve, length, curve * 0.3);
-      
-      // Right rounded end
-      ctx.arc(length, curve * 0.3, thickness * 0.6, -Math.PI * 0.5, Math.PI * 0.5);
-      
-      // Bottom edge (curved inward, creating banana shape)
-      ctx.quadraticCurveTo(0, thickness * 0.8 + curve * 0.5, -length, curve * 0.3);
-      
-      // Left rounded end
-      ctx.arc(-length, curve * 0.3, thickness * 0.6, Math.PI * 0.5, -Math.PI * 0.5);
-      
-      ctx.closePath();
-
-      if (filled) {
-        ctx.fillStyle = "rgba(99, 102, 241, 1)";
-        ctx.fill();
-      } else {
-        ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      }
+      ctx.strokeStyle = filled ? "rgba(99, 102, 241, 1)" : "rgba(99, 102, 241, 0.9)";
+      ctx.lineWidth = thickness;
+      ctx.lineCap = "round";
+      ctx.stroke();
 
       ctx.restore();
     };
