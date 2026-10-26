@@ -31,7 +31,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     vy: 0,
     smoothSpeed: 0,
     angle: 0,
-    smoothCurvature: 0,
     // Outer ring position with delay
     ringX: 0,
     ringY: 0,
@@ -102,45 +101,24 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.vx = 0;
         state.vy = 0;
         state.smoothSpeed = 0;
-        state.smoothCurvature = 0;
         state.history.length = 0;
       }
     };
 
     const calculateWindowedVelocity = () => {
       const h = state.history;
-      if (h.length < 2) return { vx: 0, vy: 0, curvature: 0 };
+      if (h.length < 2) return { vx: 0, vy: 0 };
 
       const oldest = h[0];
       const newest = h[h.length - 1];
 
       const dt = newest.t - oldest.t;
-      if (dt < 0.5) return { vx: 0, vy: 0, curvature: 0 };
+      if (dt < 0.5) return { vx: 0, vy: 0 };
 
       const vx = (newest.x - oldest.x) / dt;
       const vy = (newest.y - oldest.y) / dt;
 
-      let curvature = 0;
-      if (h.length === 3) {
-        const p0 = h[0];
-        const p1 = h[1];
-        const p2 = h[2];
-
-        const v1x = p1.x - p0.x;
-        const v1y = p1.y - p0.y;
-        const v2x = p2.x - p1.x;
-        const v2y = p2.y - p1.y;
-
-        const cross = v1x * v2y - v1y * v2x;
-        const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
-        const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
-
-        if (mag1 > 0.1 && mag2 > 0.1) {
-          curvature = cross / (mag1 * mag2);
-        }
-      }
-
-      return { vx, vy, curvature };
+      return { vx, vy };
     };
 
     const animate = () => {
@@ -155,16 +133,15 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       }
 
       if (reducedMotionRef.current) {
-        drawCursor(ctx, state.x, state.y, 0, 0, 0);
+        drawCursor(ctx, state.x, state.y, 0, 0);
         animFrameRef.current = requestAnimationFrame(animate);
         return;
       }
 
-      const { vx: rawVx, vy: rawVy, curvature } = calculateWindowedVelocity();
+      const { vx: rawVx, vy: rawVy } = calculateWindowedVelocity();
 
       state.vx = state.vx * 0.7 + rawVx * 0.3;
       state.vy = state.vy * 0.7 + rawVy * 0.3;
-      state.smoothCurvature = state.smoothCurvature * 0.6 + curvature * 0.4;
 
       // Calculate instantaneous speed from last to newest position
       const history = state.history;
@@ -196,7 +173,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.ringX += (state.x - state.ringX) * lerpFactor;
       state.ringY += (state.y - state.ringY) * lerpFactor;
 
-      drawCursor(ctx, state.x, state.y, state.angle, instantSpeed, state.smoothCurvature);
+      drawCursor(ctx, state.x, state.y, state.angle, instantSpeed);
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
@@ -206,8 +183,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       x: number,
       y: number,
       angle: number,
-      speed: number,
-      curvature: number
+      speed: number
     ) => {
       const baseRadius = 3;
       const ringRadius = 10;
@@ -227,29 +203,30 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       // Inner dot stretches at 0.5x the outer ring
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
-      // Calculate bend angle: 2nd cache bends toward latest position
+      // Calculate bend angle: cursor bends toward newest position relative to last
       let bendAngle = 0;
       if (h.length >= 2 && stretchAmount > 1.05) {
-        const secondCache = h.length >= 3 ? h[h.length - 2] : h[0];
-        const latest = h[h.length - 1];
+        // Last position and newest position
+        const lastPos = h[h.length - 2];
+        const newestPos = h[h.length - 1];
         
-        // Direction from 2nd cache toward latest
-        const dx = latest.x - secondCache.x;
-        const dy = latest.y - secondCache.y;
+        // Direction from last to newest (current movement direction)
+        const dx = newestPos.x - lastPos.x;
+        const dy = newestPos.y - lastPos.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist > 0.5) {
-          // Angle from 2nd cache toward latest
-          const targetAngle = Math.atan2(dy, dx);
-          // Calculate relative angle difference
-          let angleDiff = targetAngle - angle;
+          // Angle of newest relative to last
+          const moveAngle = Math.atan2(dy, dx);
+          // Calculate relative angle difference from smoothed velocity angle
+          let angleDiff = moveAngle - angle;
           // Normalize to -PI to PI
           while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
           while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
           // Bend strength based on distance and stretch
-          const bendStrength = Math.min(1, dist / 20) * Math.min(1, (stretchAmount - 1) / 1.5);
-          bendAngle = angleDiff * bendStrength * 0.4;
+          const bendStrength = Math.min(1, dist / 15) * Math.min(1, (stretchAmount - 1) / 1.5);
+          bendAngle = angleDiff * bendStrength * 0.6;
         }
       }
 
@@ -263,7 +240,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.translate(x, y);
         ctx.rotate(angle + bendAngle);
 
-        const skewX = curvature * 0.3 * (innerStretchAmount - 1);
+        const skewX = bendAngle * 0.5;
         ctx.transform(1, 0, skewX, 1, 0, 0);
 
         ctx.beginPath();
@@ -278,7 +255,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.translate(ringX, ringY);
         ctx.rotate(angle + bendAngle);
 
-        const ringSkewX = curvature * 0.3 * (stretchAmount - 1);
+        const ringSkewX = bendAngle * 0.5;
         ctx.transform(1, 0, ringSkewX, 1, 0, 0);
 
         ctx.beginPath();
