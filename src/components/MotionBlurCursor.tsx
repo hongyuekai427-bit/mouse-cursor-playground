@@ -192,30 +192,28 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
       if (trailLength < 2) return;
 
-      // Use the 2nd cache position as the curve target
-      // The trail bends toward the 2nd most recent position
-      let targetX = state.x;
-      let targetY = state.y;
-      if (h.length >= 2) {
-        // 2nd cache is the middle/second-to-last position
-        const secondCache = h.length >= 3 ? h[h.length - 2] : h[0];
-        targetX = secondCache.x;
-        targetY = secondCache.y;
-      }
-
-      // Calculate direction from current to 2nd cache (this is where trail should bend toward)
-      const toTargetX = targetX - state.x;
-      const toTargetY = targetY - state.y;
-      const toTargetDist = Math.sqrt(toTargetX * toTargetX + toTargetY * toTargetY);
-
-      // If we have a valid target, bend the trail toward it
+      // The 2nd cache bends toward the latest position
+      // This creates a curve where the trail follows the recent path
       let bendX = 0;
       let bendY = 0;
-      if (toTargetDist > 0.5) {
-        // Normalize and scale the bend
-        const bendStrength = Math.min(1, toTargetDist / 30);
-        bendX = (toTargetX / toTargetDist) * bendStrength;
-        bendY = (toTargetY / toTargetDist) * bendStrength;
+      
+      if (h.length >= 2) {
+        // 2nd cache (middle point)
+        const secondCache = h.length >= 3 ? h[h.length - 2] : h[0];
+        // Latest position
+        const latest = h[h.length - 1];
+        
+        // Direction from 2nd cache toward latest
+        const toLatestX = latest.x - secondCache.x;
+        const toLatestY = latest.y - secondCache.y;
+        const toLatestDist = Math.sqrt(toLatestX * toLatestX + toLatestY * toLatestY);
+        
+        if (toLatestDist > 0.5) {
+          // Normalize and use as bend direction
+          const bendStrength = Math.min(1, toLatestDist / 20);
+          bendX = (toLatestX / toLatestDist) * bendStrength;
+          bendY = (toLatestY / toLatestDist) * bendStrength;
+        }
       }
 
       const numSamples = Math.min(18, Math.max(4, Math.floor(trailLength / 3)));
@@ -312,16 +310,19 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         stretchAmount = 1 + t * 1.5 * multiplier;
       }
 
-      // Calculate bend angle toward 2nd cache position
+      // Calculate bend angle: 2nd cache bends toward latest position
       let bendAngle = 0;
       if (h.length >= 2 && stretchAmount > 1.05) {
         const secondCache = h.length >= 3 ? h[h.length - 2] : h[0];
-        const dx = secondCache.x - x;
-        const dy = secondCache.y - y;
+        const latest = h[h.length - 1];
+        
+        // Direction from 2nd cache toward latest
+        const dx = latest.x - secondCache.x;
+        const dy = latest.y - secondCache.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist > 0.5) {
-          // Angle from current to 2nd cache
+          // Angle from 2nd cache toward latest
           const targetAngle = Math.atan2(dy, dx);
           // Calculate relative angle difference
           let angleDiff = targetAngle - angle;
