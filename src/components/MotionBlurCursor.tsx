@@ -33,6 +33,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     smoothSpeed: 0,
     angle: 0,
     smoothCurvature: 0,
+    // Outer ring position with delay
+    ringX: 0,
+    ringY: 0,
   });
 
   // Keep config ref in sync
@@ -72,6 +75,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.y = e.clientY;
       state.visible = true;
       state.hasMoved = true;
+
+      // Initialize ring position on first move
+      if (state.ringX === 0 && state.ringY === 0) {
+        state.ringX = e.clientX;
+        state.ringY = e.clientY;
+      }
 
       state.history.push({ x: e.clientX, y: e.clientY, t: now });
 
@@ -182,6 +191,11 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       if (smoothVelSpeed > 0.5) {
         state.angle = Math.atan2(state.vy, state.vx);
       }
+
+      // Update outer ring position with 5ms delay (lerp factor ~0.3 at 60fps)
+      const lerpFactor = 0.3;
+      state.ringX += (state.x - state.ringX) * lerpFactor;
+      state.ringY += (state.y - state.ringY) * lerpFactor;
 
       // Draw trail
       if (instantSpeed > 0.1) {
@@ -352,7 +366,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
       }
 
+      // Outer ring position with delay
+      const ringX = state.ringX;
+      const ringY = state.ringY;
+
       if (stretchAmount > 1.05) {
+        // Draw stretched inner dot at exact cursor position
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle + bendAngle);
@@ -364,6 +383,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.ellipse(0, 0, baseRadius * stretchAmount, baseRadius, 0, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(99, 102, 241, 1)";
         ctx.fill();
+
+        ctx.restore();
+
+        // Draw stretched outer ring with delay
+        ctx.save();
+        ctx.translate(ringX, ringY);
+        ctx.rotate(angle + bendAngle);
+
+        const ringSkewX = curvature * 0.3 * (stretchAmount - 1);
+        ctx.transform(1, 0, ringSkewX, 1, 0, 0);
 
         ctx.beginPath();
         ctx.ellipse(0, 0, ringRadius * stretchAmount, ringRadius, 0, 0, Math.PI * 2);
@@ -385,13 +414,15 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
         ctx.restore();
       } else {
+        // Draw inner dot at exact cursor position
         ctx.beginPath();
         ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(99, 102, 241, 1)";
         ctx.fill();
 
+        // Draw outer ring with delay
         ctx.beginPath();
-        ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+        ctx.arc(ringX, ringY, ringRadius, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
         ctx.lineWidth = 1.5;
         ctx.stroke();
