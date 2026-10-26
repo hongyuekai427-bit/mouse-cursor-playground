@@ -17,6 +17,8 @@ export default function MotionBlurCursor() {
     hasMoved: false,
     smoothSpeed: 0,
     angle: 0,
+    // Cumulative distance traveled (decays over time)
+    distanceTraveled: 0,
   });
 
   useEffect(() => {
@@ -95,6 +97,7 @@ export default function MotionBlurCursor() {
         state.vx = 0;
         state.vy = 0;
         state.smoothSpeed = 0;
+        state.distanceTraveled = 0;
       }
     };
 
@@ -118,6 +121,12 @@ export default function MotionBlurCursor() {
 
       // Calculate speed (convert px/ms to px/frame at 60fps)
       const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy) * 16.67;
+
+      // Add to distance traveled
+      state.distanceTraveled += speed;
+
+      // Decay distance over time
+      state.distanceTraveled *= 0.9;
 
       // Smooth speed
       state.smoothSpeed = state.smoothSpeed * 0.85 + speed * 0.15;
@@ -150,13 +159,15 @@ export default function MotionBlurCursor() {
       const speed = state.smoothSpeed;
       const angle = state.angle;
 
-      // Trail length is 2x cursor radius
+      // Trail length based on distance traveled
       const cursorRadius = 3;
-      const trailLength = cursorRadius * 2;
+      const minTrailLength = cursorRadius * 2;
+      const maxTrailLength = cursorRadius * 10;
+      const trailLength = Math.min(maxTrailLength, Math.max(minTrailLength, state.distanceTraveled * 0.5));
 
       if (trailLength < 2) return;
 
-      const numSamples = 5;
+      const numSamples = Math.min(15, Math.max(5, Math.floor(trailLength / 2)));
 
       // Direction behind cursor
       const backX = -Math.cos(angle);
@@ -171,7 +182,7 @@ export default function MotionBlurCursor() {
         const py = state.y + backY * distance;
 
         const alpha = (1 - t * t) * 0.7 * Math.min(1, speed / 3);
-        const radius = 3 * (1 - t * 0.6);
+        const radius = cursorRadius * (1 - t * 0.6);
 
         if (alpha < 0.02 || radius < 0.3) continue;
 
@@ -191,11 +202,12 @@ export default function MotionBlurCursor() {
       gradient.addColorStop(0.4, `rgba(99, 102, 241, ${baseAlpha * 0.4})`);
       gradient.addColorStop(1, "rgba(99, 102, 241, 0)");
 
+      const lineWidth = Math.max(3, trailLength * 0.5);
       ctx.beginPath();
       ctx.moveTo(state.x, state.y);
       ctx.lineTo(endX, endY);
       ctx.strokeStyle = gradient;
-      ctx.lineWidth = 6;
+      ctx.lineWidth = lineWidth;
       ctx.lineCap = "round";
       ctx.stroke();
 
@@ -210,7 +222,7 @@ export default function MotionBlurCursor() {
       ctx.moveTo(state.x, state.y);
       ctx.lineTo(endX, endY);
       ctx.strokeStyle = coreGradient;
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = lineWidth * 0.4;
       ctx.lineCap = "round";
       ctx.stroke();
     };
