@@ -203,30 +203,52 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       // Inner dot stretches at 0.5x the outer ring
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
-      // Calculate bend angle: cursor bends toward newest position relative to last
+      // Calculate bend angle using 2-4 cache window to detect turning
       let bendAngle = 0;
       if (h.length >= 2 && stretchAmount > 1.05) {
-        // Last position and newest position
-        const lastPos = h[h.length - 2];
-        const newestPos = h[h.length - 1];
+        // Use 2-4 recent positions to detect curvature
+        const windowSize = Math.min(4, h.length);
+        const recentPoints = h.slice(-windowSize);
         
-        // Direction from last to newest (current movement direction)
-        const dx = newestPos.x - lastPos.x;
-        const dy = newestPos.y - lastPos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist > 0.5) {
-          // Angle of newest relative to last
-          const moveAngle = Math.atan2(dy, dx);
-          // Calculate relative angle difference from smoothed velocity angle
-          let angleDiff = moveAngle - angle;
-          // Normalize to -PI to PI
-          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
-          // Bend strength based on distance and stretch
-          const bendStrength = Math.min(1, dist / 15) * Math.min(1, (stretchAmount - 1) / 1.5);
-          bendAngle = angleDiff * bendStrength * 0.6;
+        // Calculate total angular change across the window
+        let totalAngleChange = 0;
+        let totalDistance = 0;
+        
+        for (let i = 1; i < recentPoints.length; i++) {
+          const prev = recentPoints[i - 1];
+          const curr = recentPoints[i];
+          
+          const dx = curr.x - prev.x;
+          const dy = curr.y - prev.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          if (i > 1 && dist > 0.5) {
+            const prevDx = recentPoints[i - 1].x - recentPoints[i - 2].x;
+            const prevDy = recentPoints[i - 1].y - recentPoints[i - 2].y;
+            const prevDist = Math.sqrt(prevDx * prevDx + prevDy * prevDy);
+            
+            if (prevDist > 0.5) {
+              // Calculate angle between consecutive segments
+              const angle1 = Math.atan2(prevDy, prevDx);
+              const angle2 = Math.atan2(dy, dx);
+              let angleDiff = angle2 - angle1;
+              
+              // Normalize to -PI to PI
+              while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+              while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+              
+              totalAngleChange += angleDiff;
+            }
+          }
+          
+          totalDistance += dist;
+        }
+        
+        // Apply bend if there's significant turning
+        if (Math.abs(totalAngleChange) > 0.1 && totalDistance > 1) {
+          const bendStrength = Math.min(1, Math.abs(totalAngleChange) / 1.5) * 
+                              Math.min(1, (stretchAmount - 1) / 1.5);
+          bendAngle = totalAngleChange * bendStrength * 0.5;
         }
       }
 
@@ -235,9 +257,15 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const ringY = state.ringY;
 
       if (stretchAmount > 1.05) {
+        // Calculate perpendicular offset for visual bend
+        const bendOffset = bendAngle * 3;
+        const perpAngle = angle + Math.PI / 2;
+        const offsetX = Math.cos(perpAngle) * bendOffset;
+        const offsetY = Math.sin(perpAngle) * bendOffset;
+        
         // Draw stretched inner dot at exact cursor position (0.5x outer stretch)
         ctx.save();
-        ctx.translate(x, y);
+        ctx.translate(x + offsetX * 0.5, y + offsetY * 0.5);
         ctx.rotate(angle + bendAngle);
 
         const skewX = bendAngle * 0.5;
@@ -252,7 +280,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
         // Draw stretched outer ring with delay
         ctx.save();
-        ctx.translate(ringX, ringY);
+        ctx.translate(ringX + offsetX, ringY + offsetY);
         ctx.rotate(angle + bendAngle);
 
         const ringSkewX = bendAngle * 0.5;
