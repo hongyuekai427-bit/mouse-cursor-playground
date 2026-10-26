@@ -158,21 +158,37 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.vy = state.vy * 0.7 + rawVy * 0.3;
       state.smoothCurvature = state.smoothCurvature * 0.6 + curvature * 0.4;
 
-      // Speed in px/frame (at 60fps)
-      const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy) * 16.67;
+      // Calculate instantaneous speed from last to newest position
+      const history = state.history;
+      let instantSpeed = 0;
+      if (history.length >= 2) {
+        const last = history[history.length - 2];
+        const newest = history[history.length - 1];
+        const dx = newest.x - last.x;
+        const dy = newest.y - last.y;
+        const dt = newest.t - last.t;
+        if (dt > 0) {
+          // Speed in px/frame (at 60fps)
+          instantSpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
+        }
+      }
 
-      state.smoothSpeed = state.smoothSpeed * 0.82 + speed * 0.18;
+      // Use instantaneous speed directly for trail length
+      state.smoothSpeed = instantSpeed;
 
-      if (speed > 0.5) {
+      // Smoothed velocity for direction
+      const smoothVelSpeed = Math.sqrt(state.vx * state.vx + state.vy * state.vy) * 16.67;
+
+      if (smoothVelSpeed > 0.5) {
         state.angle = Math.atan2(state.vy, state.vx);
       }
 
       // Draw trail
-      if (state.smoothSpeed > 0.1) {
+      if (instantSpeed > 0.1) {
         drawDirectionalTrail(ctx, state, configRef.current);
       }
 
-      drawCursor(ctx, state.x, state.y, state.angle, state.smoothSpeed, state.smoothCurvature);
+      drawCursor(ctx, state.x, state.y, state.angle, instantSpeed, state.smoothCurvature);
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
