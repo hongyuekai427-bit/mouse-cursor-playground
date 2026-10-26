@@ -7,7 +7,6 @@ interface TimestampedPos {
 }
 
 export interface CursorConfig {
-  trailMultiplier: number;
   ellipseMultiplier: number;
   backgroundColor: string;
 }
@@ -192,129 +191,14 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.angle = Math.atan2(state.vy, state.vx);
       }
 
-      // Update outer ring position with 5ms delay (lerp factor ~0.3 at 60fps)
-      const lerpFactor = 0.3;
+      // Update outer ring position with 2ms delay (lerp factor ~0.75 at 60fps)
+      const lerpFactor = 0.75;
       state.ringX += (state.x - state.ringX) * lerpFactor;
       state.ringY += (state.y - state.ringY) * lerpFactor;
-
-      // Draw trail
-      if (instantSpeed > 0.1) {
-        drawDirectionalTrail(ctx, state, configRef.current);
-      }
 
       drawCursor(ctx, state.x, state.y, state.angle, instantSpeed, state.smoothCurvature);
 
       animFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    const drawDirectionalTrail = (
-      ctx: CanvasRenderingContext2D,
-      state: typeof stateRef.current,
-      config: CursorConfig
-    ) => {
-      const speed = state.smoothSpeed;
-      const multiplier = config.trailMultiplier;
-      const h = state.history;
-
-      const cursorRadius = 3;
-      // Trail length is purely speed-based
-      const trailLength = Math.min(120, speed * multiplier);
-
-      if (trailLength < 2) return;
-
-      // The 2nd cache bends toward the latest position
-      // This creates a curve where the trail follows the recent path
-      let bendX = 0;
-      let bendY = 0;
-      
-      if (h.length >= 2) {
-        // 2nd cache (middle point)
-        const secondCache = h.length >= 3 ? h[h.length - 2] : h[0];
-        // Latest position
-        const latest = h[h.length - 1];
-        
-        // Direction from 2nd cache toward latest
-        const toLatestX = latest.x - secondCache.x;
-        const toLatestY = latest.y - secondCache.y;
-        const toLatestDist = Math.sqrt(toLatestX * toLatestX + toLatestY * toLatestY);
-        
-        if (toLatestDist > 0.5) {
-          // Normalize and use as bend direction
-          const bendStrength = Math.min(1, toLatestDist / 20);
-          bendX = (toLatestX / toLatestDist) * bendStrength;
-          bendY = (toLatestY / toLatestDist) * bendStrength;
-        }
-      }
-
-      const numSamples = Math.min(18, Math.max(4, Math.floor(trailLength / 3)));
-
-      // Base direction: opposite of velocity (trail extends behind)
-      const angle = state.angle;
-      const backX = -Math.cos(angle);
-      const backY = -Math.sin(angle);
-
-      // Draw fading circles along curved path that bends toward 2nd cache
-      for (let i = 0; i < numSamples; i++) {
-        const t = (i + 1) / (numSamples + 1);
-        const distance = t * trailLength;
-
-        // Blend between straight-back direction and bend toward 2nd cache
-        // The bend increases along the trail (more curve further back)
-        const bendFactor = t * t; // Quadratic bend
-        const px = state.x + backX * distance + bendX * distance * bendFactor * 0.5;
-        const py = state.y + backY * distance + bendY * distance * bendFactor * 0.5;
-
-        const alpha = (1 - t * t) * 0.7 * Math.min(1, speed / 3);
-        const radius = cursorRadius * (1 - t * 0.6);
-
-        if (alpha < 0.02 || radius < 0.3) continue;
-
-        ctx.beginPath();
-        ctx.arc(px, py, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(99, 102, 241, ${alpha})`;
-        ctx.fill();
-      }
-
-      // Draw curved gradient streak using 2nd cache as control point
-      const endDistance = trailLength;
-      const endX = state.x + backX * endDistance + bendX * endDistance * 0.5;
-      const endY = state.y + backY * endDistance + bendY * endDistance * 0.5;
-
-      // Control point: blend between straight line and 2nd cache position
-      const cpT = 0.4; // Control point at 40% along trail
-      const cpDistance = cpT * trailLength;
-      const cpBendFactor = cpT * cpT;
-      const cpX = state.x + backX * cpDistance + bendX * cpDistance * cpBendFactor * 0.5;
-      const cpY = state.y + backY * cpDistance + bendY * cpDistance * cpBendFactor * 0.5;
-
-      const gradient = ctx.createLinearGradient(state.x, state.y, endX, endY);
-      const baseAlpha = Math.min(0.8, speed * 0.08);
-      gradient.addColorStop(0, `rgba(99, 102, 241, ${baseAlpha})`);
-      gradient.addColorStop(0.4, `rgba(99, 102, 241, ${baseAlpha * 0.4})`);
-      gradient.addColorStop(1, "rgba(99, 102, 241, 0)");
-
-      const lineWidth = Math.max(3, trailLength * 0.4);
-      ctx.beginPath();
-      ctx.moveTo(state.x, state.y);
-      ctx.quadraticCurveTo(cpX, cpY, endX, endY);
-      ctx.strokeStyle = gradient;
-      ctx.lineWidth = lineWidth;
-      ctx.lineCap = "round";
-      ctx.stroke();
-
-      const coreGradient = ctx.createLinearGradient(state.x, state.y, endX, endY);
-      const coreAlpha = Math.min(0.9, speed * 0.1);
-      coreGradient.addColorStop(0, `rgba(165, 180, 252, ${coreAlpha})`);
-      coreGradient.addColorStop(0.3, `rgba(129, 140, 248, ${coreAlpha * 0.5})`);
-      coreGradient.addColorStop(1, "rgba(99, 102, 241, 0)");
-
-      ctx.beginPath();
-      ctx.moveTo(state.x, state.y);
-      ctx.quadraticCurveTo(cpX, cpY, endX, endY);
-      ctx.strokeStyle = coreGradient;
-      ctx.lineWidth = lineWidth * 0.4;
-      ctx.lineCap = "round";
-      ctx.stroke();
     };
 
     const drawCursor = (

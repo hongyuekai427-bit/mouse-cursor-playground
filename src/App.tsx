@@ -3,7 +3,6 @@ import MotionBlurCursor, { CursorConfig } from "./components/MotionBlurCursor";
 
 export default function App() {
   const [config, setConfig] = useState<CursorConfig>({
-    trailMultiplier: 2,
     ellipseMultiplier: 1,
     backgroundColor: "#000000",
   });
@@ -88,14 +87,6 @@ export default function App() {
               backdropFilter: "blur(12px)",
             }}
           >
-            <SliderRow
-              label="Trail Length"
-              value={config.trailMultiplier}
-              min={0.2}
-              max={8}
-              step={0.1}
-              onChange={(v) => setConfig({ ...config, trailMultiplier: v })}
-            />
             <SliderRow
               label="Ellipse Stretch"
               value={config.ellipseMultiplier}
