@@ -1,92 +1,37 @@
 import { useEffect, useRef } from "react";
 
-/**
- * Configuration for the directional motion blur cursor effect.
- */
-interface CursorConfig {
-  /** Maximum trail length in pixels */
-  maxTrailLength: number;
-  /** Base opacity of the trail (0-1) */
-  trailOpacity: number;
-  /** Velocity smoothing factor (0-1, higher = less smoothing) */
-  velocitySmoothing: number;
-  /** How quickly the trail fades when cursor stops (0-1, higher = faster fade) */
-  fadeRate: number;
-  /** Maximum number of trail samples to render */
-  maxSamples: number;
-  /** Cursor radius in pixels */
-  cursorRadius: number;
-  /** Minimum velocity to show trail (px/s) */
-  minVelocityForTrail: number;
-  /** Maximum velocity considered (px/s) - clamped above this */
-  maxVelocity: number;
-  /** Cursor color */
-  cursorColor: string;
-  /** Trail color (can differ from cursor) */
-  trailColor: string;
-  /** Outer ring radius */
-  outerRadius: number;
-}
-
-const DEFAULT_CONFIG: CursorConfig = {
-  maxTrailLength: 100,
-  trailOpacity: 0.7,
-  velocitySmoothing: 0.2,
-  fadeRate: 0.1,
-  maxSamples: 30,
-  cursorRadius: 5,
-  minVelocityForTrail: 30,
-  maxVelocity: 4000,
-  cursorColor: "rgba(99, 102, 241, 1)",
-  trailColor: "rgba(99, 102, 241,",
-  outerRadius: 18,
-};
-
-interface PositionSample {
-  x: number;
-  y: number;
-  time: number;
-}
-
 export default function MotionBlurCursor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const configRef = useRef<CursorConfig>(DEFAULT_CONFIG);
   const animFrameRef = useRef<number>(0);
-  const isActiveRef = useRef(false);
   const reducedMotionRef = useRef(false);
 
-  // Mutable state stored in refs to avoid React re-renders
   const stateRef = useRef({
-    // Current pointer position (raw, no interpolation)
-    pointerX: -100,
-    pointerY: -100,
-    // Smoothed velocity (px/s)
-    velocityX: 0,
-    velocityY: 0,
-    // Trail fade factor (1 = fully visible, 0 = invisible)
-    trailFade: 0,
-    // Whether the pointer is inside the viewport
-    pointerInside: false,
-    // Position history ring buffer
-    history: [] as PositionSample[],
-    historyIndex: 0,
-    historySize: 0,
-    // Animation state
-    needsAnimation: false,
-    lastFrameTime: 0,
+    x: 0,
+    y: 0,
+    prevX: 0,
+    prevY: 0,
+    prevTime: 0,
+    vx: 0,
+    vy: 0,
+    visible: false,
+    hasMoved: false,
+    smoothSpeed: 0,
+    angle: 0,
   });
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d", { alpha: true });
-    if (!ctx) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      console.error("Failed to get canvas context");
+      return;
+    }
 
-    const config = configRef.current;
     const state = stateRef.current;
 
-    // Check for reduced motion preference
+    // Reduced motion check
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     reducedMotionRef.current = motionQuery.matches;
     const handleMotionChange = (e: MediaQueryListEvent) => {
@@ -94,14 +39,7 @@ export default function MotionBlurCursor() {
     };
     motionQuery.addEventListener("change", handleMotionChange);
 
-    // Ring buffer for position history
-    const HISTORY_CAPACITY = 64;
-    state.history = new Array(HISTORY_CAPACITY);
-    for (let i = 0; i < HISTORY_CAPACITY; i++) {
-      state.history[i] = { x: 0, y: 0, time: 0 };
-    }
-
-    // Resize canvas to match viewport and DPR
+    // Resize canvas
     const resizeCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
       canvas.width = window.innerWidth * dpr;
@@ -112,257 +50,204 @@ export default function MotionBlurCursor() {
     };
     resizeCanvas();
 
-    // Pointer event handlers
+    // Pointer handlers
     const handlePointerMove = (e: PointerEvent) => {
-      if (reducedMotionRef.current) return;
-      state.pointerX = e.clientX;
-      state.pointerY = e.clientY;
-      state.pointerInside = true;
+      const now = performance.now();
+      const newX = e.clientX;
+      const newY = e.clientY;
 
-      // Add to history ring buffer
-      const sample = state.history[state.historyIndex % HISTORY_CAPACITY];
-      sample.x = e.clientX;
-      sample.y = e.clientY;
-      sample.time = performance.now();
-      state.historyIndex++;
-      if (state.historySize < HISTORY_CAPACITY) state.historySize++;
+      state.x = newX;
+      state.y = newY;
+      state.visible = true;
 
-      if (!state.needsAnimation) {
-        state.needsAnimation = true;
-        state.lastFrameTime = performance.now();
-        animFrameRef.current = requestAnimationFrame(animate);
+      if (!state.hasMoved) {
+        state.prevX = newX;
+        state.prevY = newY;
+        state.prevTime = now;
+        state.hasMoved = true;
+        return;
       }
+
+      // Calculate velocity
+      const dt = now - state.prevTime;
+      if (dt > 0) {
+        const dx = newX - state.prevX;
+        const dy = newY - state.prevY;
+        state.vx = dx / dt;
+        state.vy = dy / dt;
+      }
+
+      state.prevX = newX;
+      state.prevY = newY;
+      state.prevTime = now;
     };
 
     const handlePointerLeave = () => {
-      state.pointerInside = false;
-      // Let the trail fade out naturally
-      if (!state.needsAnimation) {
-        state.needsAnimation = true;
-        state.lastFrameTime = performance.now();
-        animFrameRef.current = requestAnimationFrame(animate);
-      }
+      state.visible = false;
+    };
+
+    const handlePointerEnter = () => {
+      state.visible = true;
     };
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // Reset velocity when tab becomes hidden
-        state.velocityX = 0;
-        state.velocityY = 0;
-        state.trailFade = 0;
+        state.vx = 0;
+        state.vy = 0;
+        state.smoothSpeed = 0;
       }
-    };
-
-    const handleWindowBlur = () => {
-      state.pointerInside = false;
-      state.velocityX = 0;
-      state.velocityY = 0;
-      state.trailFade = 0;
     };
 
     // Animation loop
-    const animate = (now: number) => {
-      const dt = Math.min((now - state.lastFrameTime) / 1000, 0.05); // Cap dt to 50ms
-      state.lastFrameTime = now;
+    const animate = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
 
-      if (reducedMotionRef.current) {
-        // Just draw cursor at current position without trail
-        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-        if (state.pointerInside) {
-          drawCursor(ctx, state.pointerX, state.pointerY, config, 1);
-        }
-        state.needsAnimation = false;
+      ctx.clearRect(0, 0, w, h);
+
+      if (!state.visible || !state.hasMoved) {
+        animFrameRef.current = requestAnimationFrame(animate);
         return;
       }
 
-      // Calculate raw velocity from history
-      let rawVx = 0;
-      let rawVy = 0;
-      if (state.historySize >= 2) {
-        const newestIdx = (state.historyIndex - 1 + HISTORY_CAPACITY) % HISTORY_CAPACITY;
-        const olderIdx = (state.historyIndex - 3 + HISTORY_CAPACITY * 2) % HISTORY_CAPACITY;
-        const newest = state.history[newestIdx];
-        const older = state.history[olderIdx];
-        const timeDiff = (newest.time - older.time) / 1000;
-        if (timeDiff > 0.001) {
-          rawVx = (newest.x - older.x) / timeDiff;
-          rawVy = (newest.y - older.y) / timeDiff;
-        }
-      }
-
-      // Smooth velocity
-      const smoothing = config.velocitySmoothing;
-      state.velocityX += (rawVx - state.velocityX) * smoothing;
-      state.velocityY += (rawVy - state.velocityY) * smoothing;
-
-      // Calculate speed
-      const speed = Math.sqrt(
-        state.velocityX * state.velocityX + state.velocityY * state.velocityY
-      );
-
-      // Clamp velocity
-      const clampedSpeed = Math.min(speed, config.maxVelocity);
-
-      // Update trail fade
-      if (clampedSpeed > config.minVelocityForTrail && state.pointerInside) {
-        state.trailFade = Math.min(1, state.trailFade + dt * 12);
-      } else {
-        state.trailFade = Math.max(0, state.trailFade - config.fadeRate * dt * 60);
-      }
-
-      // Clear canvas
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-
-      // Draw trail if there's enough velocity and fade
-      if (state.trailFade > 0.01 && clampedSpeed > config.minVelocityForTrail) {
-        drawTrail(ctx, state, config, clampedSpeed);
-      }
-
-      // Draw cursor on top
-      if (state.pointerInside) {
-        drawCursor(ctx, state.pointerX, state.pointerY, config, 1);
-      }
-
-      // Continue animation if needed
-      const shouldContinue =
-        state.trailFade > 0.01 ||
-        state.pointerInside ||
-        Math.abs(state.velocityX) > 1 ||
-        Math.abs(state.velocityY) > 1;
-
-      if (shouldContinue) {
+      if (reducedMotionRef.current) {
+        drawCursor(ctx, state.x, state.y);
         animFrameRef.current = requestAnimationFrame(animate);
-      } else {
-        state.needsAnimation = false;
-        state.velocityX = 0;
-        state.velocityY = 0;
+        return;
       }
+
+      // Calculate speed (convert px/ms to px/frame at 60fps)
+      const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy) * 16.67;
+
+      // Smooth speed
+      state.smoothSpeed = state.smoothSpeed * 0.85 + speed * 0.15;
+
+      // Update angle
+      if (speed > 0.5) {
+        state.angle = Math.atan2(state.vy, state.vx);
+      }
+
+      // Decay velocity
+      state.vx *= 0.92;
+      state.vy *= 0.92;
+
+      // Draw trail
+      if (state.smoothSpeed > 0.5) {
+        drawDirectionalTrail(ctx, state);
+      }
+
+      // Draw cursor
+      drawCursor(ctx, state.x, state.y);
+
+      animFrameRef.current = requestAnimationFrame(animate);
     };
 
-    // Draw the motion blur trail following the cursor's path
-    const drawTrail = (
+    // Draw directional trail
+    const drawDirectionalTrail = (
       ctx: CanvasRenderingContext2D,
-      state: typeof stateRef.current,
-      config: CursorConfig,
-      speed: number
+      state: typeof stateRef.current
     ) => {
-      if (state.historySize < 2) return;
+      const speed = state.smoothSpeed;
+      const angle = state.angle;
 
-      // Calculate how many samples to use based on speed
-      const speedRatio = Math.min(1, speed / config.maxVelocity);
-      const numSamples = Math.min(
-        config.maxSamples,
-        Math.max(4, Math.floor(speedRatio * config.maxSamples))
-      );
+      // Trail length based on speed
+      const trailLength = Math.min(100, speed * 4);
 
-      // Calculate total trail length based on speed
-      const trailLength = speedRatio * config.maxTrailLength;
+      if (trailLength < 2) return;
 
-      // Get recent positions from history
-      const positions: { x: number; y: number; distance: number }[] = [];
-      let totalDistance = 0;
+      const numSamples = Math.min(25, Math.max(5, Math.floor(trailLength / 3)));
 
-      // Start from most recent and go backward
-      for (let i = 0; i < numSamples && i < state.historySize; i++) {
-        const idx = (state.historyIndex - 1 - i + HISTORY_CAPACITY) % HISTORY_CAPACITY;
-        const sample = state.history[idx];
+      // Direction behind cursor
+      const backX = -Math.cos(angle);
+      const backY = -Math.sin(angle);
 
-        if (i === 0) {
-          positions.push({ x: sample.x, y: sample.y, distance: 0 });
-        } else {
-          const prev = positions[positions.length - 1];
-          const dx = sample.x - prev.x;
-          const dy = sample.y - prev.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          totalDistance += dist;
+      // Draw fading circles
+      for (let i = 0; i < numSamples; i++) {
+        const t = (i + 1) / (numSamples + 1);
+        const distance = t * trailLength;
 
-          // Stop if we've exceeded trail length
-          if (totalDistance > trailLength) break;
+        const px = state.x + backX * distance;
+        const py = state.y + backY * distance;
 
-          positions.push({ x: sample.x, y: sample.y, distance: totalDistance });
-        }
-      }
+        const alpha = (1 - t * t) * 0.7 * Math.min(1, speed / 3);
+        const radius = 8 * (1 - t * 0.6);
 
-      if (positions.length < 2) return;
+        if (alpha < 0.02 || radius < 0.3) continue;
 
-      // Draw the trail as connected segments with fading opacity
-      for (let i = positions.length - 1; i > 0; i--) {
-        const curr = positions[i];
-        const prev = positions[i - 1];
-
-        // Calculate opacity based on distance from cursor
-        const distanceRatio = curr.distance / trailLength;
-        const opacity = (1 - distanceRatio) * config.trailOpacity * state.trailFade;
-
-        if (opacity < 0.01) continue;
-
-        // Calculate radius based on distance
-        const radius = config.cursorRadius * (1 - distanceRatio * 0.7);
-
-        // Draw segment
         ctx.beginPath();
-        ctx.moveTo(prev.x, prev.y);
-        ctx.lineTo(curr.x, curr.y);
-        ctx.strokeStyle = `${config.trailColor} ${opacity})`;
-        ctx.lineWidth = radius * 2;
-        ctx.lineCap = "round";
-        ctx.stroke();
-
-        // Draw circle at this point for smooth appearance
-        ctx.beginPath();
-        ctx.arc(curr.x, curr.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `${config.trailColor} ${opacity * 0.8})`;
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(99, 102, 241, ${alpha})`;
         ctx.fill();
       }
+
+      // Draw gradient streak
+      const endX = state.x + backX * trailLength;
+      const endY = state.y + backY * trailLength;
+
+      const gradient = ctx.createLinearGradient(state.x, state.y, endX, endY);
+      const baseAlpha = Math.min(0.8, speed * 0.1);
+      gradient.addColorStop(0, `rgba(99, 102, 241, ${baseAlpha})`);
+      gradient.addColorStop(0.4, `rgba(99, 102, 241, ${baseAlpha * 0.4})`);
+      gradient.addColorStop(1, "rgba(99, 102, 241, 0)");
+
+      ctx.beginPath();
+      ctx.moveTo(state.x, state.y);
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 14;
+      ctx.lineCap = "round";
+      ctx.stroke();
+
+      // Brighter core
+      const coreGradient = ctx.createLinearGradient(state.x, state.y, endX, endY);
+      const coreAlpha = Math.min(0.9, speed * 0.12);
+      coreGradient.addColorStop(0, `rgba(165, 180, 252, ${coreAlpha})`);
+      coreGradient.addColorStop(0.3, `rgba(129, 140, 248, ${coreAlpha * 0.5})`);
+      coreGradient.addColorStop(1, "rgba(99, 102, 241, 0)");
+
+      ctx.beginPath();
+      ctx.moveTo(state.x, state.y);
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = coreGradient;
+      ctx.lineWidth = 5;
+      ctx.lineCap = "round";
+      ctx.stroke();
     };
 
-    // Draw the cursor itself
-    const drawCursor = (
-      ctx: CanvasRenderingContext2D,
-      x: number,
-      y: number,
-      config: CursorConfig,
-      opacity: number
-    ) => {
+    // Draw cursor
+    const drawCursor = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
       // Inner dot
       ctx.beginPath();
-      ctx.arc(x, y, config.cursorRadius, 0, Math.PI * 2);
-      ctx.fillStyle = config.cursorColor;
-      ctx.globalAlpha = opacity;
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(99, 102, 241, 1)";
       ctx.fill();
 
       // Outer ring
       ctx.beginPath();
-      ctx.arc(x, y, config.outerRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = config.cursorColor;
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = opacity * 0.8;
+      ctx.arc(x, y, 20, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
+      ctx.lineWidth = 2.5;
       ctx.stroke();
-
-      ctx.globalAlpha = 1;
     };
 
-    // Attach event listeners
+    // Attach listeners
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerleave", handlePointerLeave);
+    window.addEventListener("pointerenter", handlePointerEnter);
     window.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("blur", handleWindowBlur);
     window.addEventListener("resize", resizeCanvas);
 
-    // Start animation loop
-    state.needsAnimation = true;
-    state.lastFrameTime = performance.now();
+    console.log("Motion blur cursor initialized");
+
+    // Start animation
     animFrameRef.current = requestAnimationFrame(animate);
-    isActiveRef.current = true;
 
     return () => {
-      // Cleanup
       cancelAnimationFrame(animFrameRef.current);
-      isActiveRef.current = false;
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerleave", handlePointerLeave);
+      window.removeEventListener("pointerenter", handlePointerEnter);
       window.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("blur", handleWindowBlur);
       window.removeEventListener("resize", resizeCanvas);
       motionQuery.removeEventListener("change", handleMotionChange);
     };
@@ -371,7 +256,15 @@ export default function MotionBlurCursor() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 z-[9999] pointer-events-none"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 9999,
+        pointerEvents: "none",
+      }}
       aria-hidden="true"
     />
   );
