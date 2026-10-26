@@ -1,5 +1,11 @@
 import { useEffect, useRef } from "react";
 
+interface TimestampedPos {
+  x: number;
+  y: number;
+  t: number;
+}
+
 export default function MotionBlurCursor() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
@@ -8,14 +14,16 @@ export default function MotionBlurCursor() {
   const stateRef = useRef({
     x: 0,
     y: 0,
-    prevX: 0,
-    prevY: 0,
-    prevTime: 0,
-    vx: 0,
-    vy: 0,
     visible: false,
     hasMoved: false,
+    // Position history buffer for 50ms windowed velocity calculation
+    history: [] as TimestampedPos[],
+    // Smoothed velocity (px/ms)
+    vx: 0,
+    vy: 0,
+    // Smoothed speed
     smoothSpeed: 0,
+    // Direction angle
     angle: 0,
     // Cumulative distance traveled (decays over time)
     distanceTraveled: 0,
@@ -26,10 +34,7 @@ export default function MotionBlurCursor() {
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      console.error("Failed to get canvas context");
-      return;
-    }
+    if (!ctx) return;
 
     const state = stateRef.current;
 
@@ -55,33 +60,19 @@ export default function MotionBlurCursor() {
     // Pointer handlers
     const handlePointerMove = (e: PointerEvent) => {
       const now = performance.now();
-      const newX = e.clientX;
-      const newY = e.clientY;
-
-      state.x = newX;
-      state.y = newY;
+      state.x = e.clientX;
+      state.y = e.clientY;
       state.visible = true;
+      state.hasMoved = true;
 
-      if (!state.hasMoved) {
-        state.prevX = newX;
-        state.prevY = newY;
-        state.prevTime = now;
-        state.hasMoved = true;
-        return;
+      // Add to history buffer
+      state.history.push({ x: e.clientX, y: e.clientY, t: now });
+
+      // Keep only last 100ms of history (buffer for 50ms window + margin)
+      const cutoff = now - 100;
+      while (state.history.length > 0 && state.history[0].t < cutoff) {
+        state.history.shift();
       }
-
-      // Calculate velocity
-      const dt = now - state.prevTime;
-      if (dt > 0) {
-        const dx = newX - state.prevX;
-        const dy = newY - state.prevY;
-        state.vx = dx / dt;
-        state.vy = dy / dt;
-      }
-
-      state.prevX = newX;
-      state.prevY = newY;
-      state.prevTime = now;
     };
 
     const handlePointerLeave = () => {
@@ -98,11 +89,55 @@ export default function MotionBlurCursor() {
         state.vy = 0;
         state.smoothSpeed = 0;
         state.distanceTraveled = 0;
+        state.history.length = 0;
       }
+    };
+
+    // Calculate velocity from 50ms window of history
+    const calculateWindowedVelocity = (now: number) => {
+      const windowStart = now - 50; // 50ms window
+
+      // Find positions at start and end of window
+      let startPos: TimestampedPos | null = null;
+      let endPos: TimestampedPos | null = null;
+
+      for (let i = state.history.length - 1; i >= 0; i--) {
+        const p = state.history[i];
+        if (p.t >= windowStart) {
+          endPos = p;
+        }
+        if (p.t <= windowStart && !startPos) {
+          startPos = p;
+          break;
+        }
+      }
+
+      // If no start position, use oldest in window
+      if (!startPos) {
+        for (let i = 0; i < state.history.length; i++) {
+          if (state.history[i].t >= windowStart) {
+            startPos = state.history[i];
+            break;
+          }
+        }
+      }
+
+      if (!startPos || !endPos || startPos === endPos) {
+        return { vx: 0, vy: 0 };
+      }
+
+      const dt = endPos.t - startPos.t;
+      if (dt < 1) return { vx: 0, vy: 0 };
+
+      return {
+        vx: (endPos.x - startPos.x) / dt,
+        vy: (endPos.y - startPos.y) / dt,
+      };
     };
 
     // Animation loop
     const animate = () => {
+      const now = performance.now();
       const w = window.innerWidth;
       const h = window.innerHeight;
 
@@ -114,10 +149,17 @@ export default function MotionBlurCursor() {
       }
 
       if (reducedMotionRef.current) {
-        drawCursor(ctx, state.x, state.y);
+        drawCursor(ctx, state.x, state.y, 0, 0);
         animFrameRef.current = requestAnimationFrame(animate);
         return;
       }
+
+      // Calculate velocity from 50ms window
+      const { vx: rawVx, vy: rawVy } = calculateWindowedVelocity(now);
+
+      // Smooth velocity
+      state.vx = state.vx * 0.7 + rawVx * 0.3;
+      state.vy = state.vy * 0.7 + rawVy * 0.3;
 
       // Calculate speed (convert px/ms to px/frame at 60fps)
       const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy) * 16.67;
@@ -125,18 +167,16 @@ export default function MotionBlurCursor() {
       // Add to distance traveled
       state.distanceTraveled += speed;
 
-      // Decay distance over time - much slower decay at low speeds
-      // Speed is in px/frame (at 60fps)
-      // When speed < 5px/frame, decay very slowly to keep trail visible
+      // Decay distance over time - slower decay at low speeds
       let decayFactor: number;
       if (speed < 1) {
-        decayFactor = 0.99; // Very slow decay when nearly stationary
+        decayFactor = 0.99;
       } else if (speed < 5) {
-        decayFactor = 0.97; // Slow decay at low speeds
+        decayFactor = 0.97;
       } else if (speed < 15) {
-        decayFactor = 0.92; // Medium decay
+        decayFactor = 0.92;
       } else {
-        decayFactor = 0.85; // Faster decay at high speeds
+        decayFactor = 0.85;
       }
       state.distanceTraveled *= decayFactor;
 
@@ -148,17 +188,13 @@ export default function MotionBlurCursor() {
         state.angle = Math.atan2(state.vy, state.vx);
       }
 
-      // Decay velocity
-      state.vx *= 0.92;
-      state.vy *= 0.92;
-
       // Draw trail
       if (state.smoothSpeed > 0.1 || state.distanceTraveled > 2) {
         drawDirectionalTrail(ctx, state);
       }
 
-      // Draw cursor
-      drawCursor(ctx, state.x, state.y);
+      // Draw cursor (with stretch when moving fast)
+      drawCursor(ctx, state.x, state.y, state.angle, state.smoothSpeed);
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
@@ -237,20 +273,71 @@ export default function MotionBlurCursor() {
       ctx.stroke();
     };
 
-    // Draw cursor
-    const drawCursor = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
-      // Inner dot
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(99, 102, 241, 1)";
-      ctx.fill();
+    // Draw cursor with optional stretch/blur based on speed
+    const drawCursor = (
+      ctx: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      angle: number,
+      speed: number
+    ) => {
+      const baseRadius = 3;
+      const ringRadius = 10;
 
-      // Outer ring
-      ctx.beginPath();
-      ctx.arc(x, y, 10, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      // Calculate stretch factor based on speed
+      // Start stretching at speed > 10, max stretch at speed > 40
+      const stretchThreshold = 10;
+      const maxStretchSpeed = 40;
+      const stretchAmount = speed > stretchThreshold
+        ? Math.min(2.5, 1 + ((speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold)) * 1.5)
+        : 1;
+
+      if (stretchAmount > 1.05 && speed > stretchThreshold) {
+        // Draw stretched cursor (ellipse)
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+
+        // Stretched inner dot
+        ctx.beginPath();
+        ctx.ellipse(0, 0, baseRadius * stretchAmount, baseRadius, 0, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(99, 102, 241, 1)";
+        ctx.fill();
+
+        // Stretched outer ring
+        ctx.beginPath();
+        ctx.ellipse(0, 0, ringRadius * stretchAmount, ringRadius, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Add a subtle motion blur behind the cursor
+        const blurLength = baseRadius * (stretchAmount - 1) * 3;
+        if (blurLength > 1) {
+          const blurGradient = ctx.createLinearGradient(-blurLength, 0, 0, 0);
+          blurGradient.addColorStop(0, "rgba(99, 102, 241, 0)");
+          blurGradient.addColorStop(1, "rgba(99, 102, 241, 0.4)");
+
+          ctx.beginPath();
+          ctx.ellipse(-blurLength * 0.5, 0, blurLength * 0.5, baseRadius * 0.8, 0, 0, Math.PI * 2);
+          ctx.fillStyle = blurGradient;
+          ctx.fill();
+        }
+
+        ctx.restore();
+      } else {
+        // Draw normal cursor (circle)
+        ctx.beginPath();
+        ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(99, 102, 241, 1)";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
     };
 
     // Attach listeners
@@ -259,8 +346,6 @@ export default function MotionBlurCursor() {
     window.addEventListener("pointerenter", handlePointerEnter);
     window.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("resize", resizeCanvas);
-
-    console.log("Motion blur cursor initialized");
 
     // Start animation
     animFrameRef.current = requestAnimationFrame(animate);
