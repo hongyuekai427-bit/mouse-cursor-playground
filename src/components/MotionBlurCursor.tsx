@@ -29,13 +29,13 @@ interface CursorConfig {
 }
 
 const DEFAULT_CONFIG: CursorConfig = {
-  maxTrailLength: 80,
-  trailOpacity: 0.6,
-  velocitySmoothing: 0.15,
-  fadeRate: 0.08,
-  maxSamples: 24,
+  maxTrailLength: 100,
+  trailOpacity: 0.7,
+  velocitySmoothing: 0.2,
+  fadeRate: 0.1,
+  maxSamples: 30,
   cursorRadius: 5,
-  minVelocityForTrail: 50,
+  minVelocityForTrail: 30,
   maxVelocity: 4000,
   cursorColor: "rgba(99, 102, 241, 1)",
   trailColor: "rgba(99, 102, 241,",
@@ -57,17 +57,12 @@ export default function MotionBlurCursor() {
 
   // Mutable state stored in refs to avoid React re-renders
   const stateRef = useRef({
-    // Current smoothed position
-    currentX: -100,
-    currentY: -100,
-    // Target position (raw pointer position)
-    targetX: -100,
-    targetY: -100,
+    // Current pointer position (raw, no interpolation)
+    pointerX: -100,
+    pointerY: -100,
     // Smoothed velocity (px/s)
     velocityX: 0,
     velocityY: 0,
-    // Raw velocity for trail length calculation
-    rawSpeed: 0,
     // Trail fade factor (1 = fully visible, 0 = invisible)
     trailFade: 0,
     // Whether the pointer is inside the viewport
@@ -79,10 +74,6 @@ export default function MotionBlurCursor() {
     // Animation state
     needsAnimation: false,
     lastFrameTime: 0,
-    // Current angle of movement
-    angle: 0,
-    // Previous angle for smoothing
-    prevAngle: 0,
   });
 
   useEffect(() => {
@@ -104,7 +95,7 @@ export default function MotionBlurCursor() {
     motionQuery.addEventListener("change", handleMotionChange);
 
     // Ring buffer for position history
-    const HISTORY_CAPACITY = 32;
+    const HISTORY_CAPACITY = 64;
     state.history = new Array(HISTORY_CAPACITY);
     for (let i = 0; i < HISTORY_CAPACITY; i++) {
       state.history[i] = { x: 0, y: 0, time: 0 };
@@ -124,8 +115,8 @@ export default function MotionBlurCursor() {
     // Pointer event handlers
     const handlePointerMove = (e: PointerEvent) => {
       if (reducedMotionRef.current) return;
-      state.targetX = e.clientX;
-      state.targetY = e.clientY;
+      state.pointerX = e.clientX;
+      state.pointerY = e.clientY;
       state.pointerInside = true;
 
       // Add to history ring buffer
@@ -158,7 +149,6 @@ export default function MotionBlurCursor() {
         // Reset velocity when tab becomes hidden
         state.velocityX = 0;
         state.velocityY = 0;
-        state.rawSpeed = 0;
         state.trailFade = 0;
       }
     };
@@ -167,7 +157,6 @@ export default function MotionBlurCursor() {
       state.pointerInside = false;
       state.velocityX = 0;
       state.velocityY = 0;
-      state.rawSpeed = 0;
       state.trailFade = 0;
     };
 
@@ -180,7 +169,7 @@ export default function MotionBlurCursor() {
         // Just draw cursor at current position without trail
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         if (state.pointerInside) {
-          drawCursor(ctx, state.targetX, state.targetY, config, 1);
+          drawCursor(ctx, state.pointerX, state.pointerY, config, 1);
         }
         state.needsAnimation = false;
         return;
@@ -210,7 +199,6 @@ export default function MotionBlurCursor() {
       const speed = Math.sqrt(
         state.velocityX * state.velocityX + state.velocityY * state.velocityY
       );
-      state.rawSpeed = speed;
 
       // Clamp velocity
       const clampedSpeed = Math.min(speed, config.maxVelocity);
@@ -220,23 +208,6 @@ export default function MotionBlurCursor() {
         state.trailFade = Math.min(1, state.trailFade + dt * 12);
       } else {
         state.trailFade = Math.max(0, state.trailFade - config.fadeRate * dt * 60);
-      }
-
-      // Interpolate current position toward target (smooth follow)
-      const followSpeed = 0.35;
-      state.currentX += (state.targetX - state.currentX) * followSpeed;
-      state.currentY += (state.targetY - state.currentY) * followSpeed;
-
-      // Calculate movement angle
-      if (clampedSpeed > config.minVelocityForTrail) {
-        const targetAngle = Math.atan2(state.velocityY, state.velocityX);
-        // Smooth angle transitions
-        let angleDiff = targetAngle - state.prevAngle;
-        // Normalize to -PI to PI
-        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-        state.angle = state.prevAngle + angleDiff * 0.3;
-        state.prevAngle = state.angle;
       }
 
       // Clear canvas
@@ -249,7 +220,7 @@ export default function MotionBlurCursor() {
 
       // Draw cursor on top
       if (state.pointerInside) {
-        drawCursor(ctx, state.currentX, state.currentY, config, 1);
+        drawCursor(ctx, state.pointerX, state.pointerY, config, 1);
       }
 
       // Continue animation if needed
@@ -268,73 +239,80 @@ export default function MotionBlurCursor() {
       }
     };
 
-    // Draw the directional motion blur trail
+    // Draw the motion blur trail following the cursor's path
     const drawTrail = (
       ctx: CanvasRenderingContext2D,
       state: typeof stateRef.current,
       config: CursorConfig,
       speed: number
     ) => {
-      const trailLength = Math.min(
-        config.maxTrailLength,
-        (speed / config.maxVelocity) * config.maxTrailLength
-      );
+      if (state.historySize < 2) return;
+
+      // Calculate how many samples to use based on speed
+      const speedRatio = Math.min(1, speed / config.maxVelocity);
       const numSamples = Math.min(
         config.maxSamples,
-        Math.max(4, Math.floor((trailLength / config.maxTrailLength) * config.maxSamples))
+        Math.max(4, Math.floor(speedRatio * config.maxSamples))
       );
 
-      const cos = Math.cos(state.angle + Math.PI); // Trail goes behind cursor
-      const sin = Math.sin(state.angle + Math.PI);
+      // Calculate total trail length based on speed
+      const trailLength = speedRatio * config.maxTrailLength;
 
-      // Draw trail as a series of fading circles along the movement direction
-      for (let i = 0; i < numSamples; i++) {
-        const t = i / numSamples; // 0 = closest to cursor, 1 = farthest
-        const distance = t * trailLength;
-        const x = state.currentX + cos * distance;
-        const y = state.currentY + sin * distance;
+      // Get recent positions from history
+      const positions: { x: number; y: number; distance: number }[] = [];
+      let totalDistance = 0;
 
-        // Opacity decreases along the trail
-        const opacity = (1 - t * t) * config.trailOpacity * state.trailFade;
-        // Size decreases along the trail
-        const radius = config.cursorRadius * (1 - t * 0.6);
+      // Start from most recent and go backward
+      for (let i = 0; i < numSamples && i < state.historySize; i++) {
+        const idx = (state.historyIndex - 1 - i + HISTORY_CAPACITY) % HISTORY_CAPACITY;
+        const sample = state.history[idx];
 
-        if (opacity < 0.01 || radius < 0.5) continue;
+        if (i === 0) {
+          positions.push({ x: sample.x, y: sample.y, distance: 0 });
+        } else {
+          const prev = positions[positions.length - 1];
+          const dx = sample.x - prev.x;
+          const dy = sample.y - prev.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          totalDistance += dist;
 
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `${config.trailColor} ${opacity})`;
-        ctx.fill();
+          // Stop if we've exceeded trail length
+          if (totalDistance > trailLength) break;
+
+          positions.push({ x: sample.x, y: sample.y, distance: totalDistance });
+        }
       }
 
-      // Draw a stretched ellipse for the main blur effect
-      const stretchFactor = Math.min(3, speed / 800);
-      if (stretchFactor > 0.3) {
-        ctx.save();
-        ctx.translate(state.currentX, state.currentY);
-        ctx.rotate(state.angle + Math.PI);
+      if (positions.length < 2) return;
 
-        // Main elongated blur shape
-        const blurLength = trailLength * 0.7;
-        const blurWidth = config.cursorRadius * 1.5;
-        const gradient = ctx.createLinearGradient(0, 0, blurLength, 0);
-        gradient.addColorStop(0, `${config.trailColor} ${0.4 * state.trailFade})`);
-        gradient.addColorStop(0.3, `${config.trailColor} ${0.2 * state.trailFade})`);
-        gradient.addColorStop(1, `${config.trailColor} 0)`);
+      // Draw the trail as connected segments with fading opacity
+      for (let i = positions.length - 1; i > 0; i--) {
+        const curr = positions[i];
+        const prev = positions[i - 1];
 
+        // Calculate opacity based on distance from cursor
+        const distanceRatio = curr.distance / trailLength;
+        const opacity = (1 - distanceRatio) * config.trailOpacity * state.trailFade;
+
+        if (opacity < 0.01) continue;
+
+        // Calculate radius based on distance
+        const radius = config.cursorRadius * (1 - distanceRatio * 0.7);
+
+        // Draw segment
         ctx.beginPath();
-        ctx.ellipse(
-          blurLength * 0.5,
-          0,
-          blurLength * 0.5,
-          blurWidth * (1 + stretchFactor * 0.3),
-          0,
-          0,
-          Math.PI * 2
-        );
-        ctx.fillStyle = gradient;
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(curr.x, curr.y);
+        ctx.strokeStyle = `${config.trailColor} ${opacity})`;
+        ctx.lineWidth = radius * 2;
+        ctx.lineCap = "round";
+        ctx.stroke();
+
+        // Draw circle at this point for smooth appearance
+        ctx.beginPath();
+        ctx.arc(curr.x, curr.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `${config.trailColor} ${opacity * 0.8})`;
         ctx.fill();
-        ctx.restore();
       }
     };
 
