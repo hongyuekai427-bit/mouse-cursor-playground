@@ -146,24 +146,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
       }
 
-      // Interpolate all values for smooth motion
+      // Use instantaneous speed directly
+      state.smoothSpeed = instantSpeed;
+      state.angle = instantAngle;
+
+      // Interpolate render position toward target (smooth follow)
       const lerpFactor = 0.35;
-      
-      // Interpolate position
       state.renderX += (state.x - state.renderX) * lerpFactor;
       state.renderY += (state.y - state.renderY) * lerpFactor;
-      
-      // Interpolate speed
-      state.smoothSpeed += (instantSpeed - state.smoothSpeed) * lerpFactor;
-      
-      // Interpolate angle (handle wrapping)
-      let angleDiff = instantAngle - state.angle;
-      // Normalize to -PI to PI
-      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-      state.angle += angleDiff * lerpFactor;
 
-      drawCursor(ctx, state.renderX, state.renderY, state.angle, state.smoothSpeed);
+      drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
