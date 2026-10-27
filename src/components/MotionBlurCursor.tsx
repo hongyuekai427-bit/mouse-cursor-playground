@@ -83,8 +83,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
       state.history.push({ x: e.clientX, y: e.clientY, t: now });
 
-      // Keep only last 3 positions
-      while (state.history.length > 3) {
+      // Keep last 16 positions for interpolation methods
+      while (state.history.length > 16) {
         state.history.shift();
       }
     };
@@ -169,7 +169,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         // Spline interpolation using Catmull-Rom
         if (state.history.length >= 4) {
           const points = state.history.slice(-4);
-          const t = 0.8; // Near end point for responsiveness
+          const t = 0.85; // Near end point for responsiveness
           const p0 = points[0];
           const p1 = points[1];
           const p2 = points[2];
@@ -179,15 +179,15 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           const t2 = t * t;
           const t3 = t2 * t;
           
-          const x = 0.5 * ((2 * p2.x) +
-            (-p1.x + p3.x) * t +
-            (2 * p1.x - 5 * p2.x + 4 * p3.x - p0.x) * t2 +
-            (-p1.x + 3 * p2.x - 3 * p3.x + p0.x) * t3);
+          const x = 0.5 * ((2 * p1.x) +
+            (-p0.x + p2.x) * t +
+            (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+            (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
           
-          const y = 0.5 * ((2 * p2.y) +
-            (-p1.y + p3.y) * t +
-            (2 * p1.y - 5 * p2.y + 4 * p3.y - p0.y) * t2 +
-            (-p1.y + 3 * p2.y - 3 * p3.y + p0.y) * t3);
+          const y = 0.5 * ((2 * p1.y) +
+            (-p0.y + p2.y) * t +
+            (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+            (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
           
           state.renderX = x;
           state.renderY = y;
@@ -198,16 +198,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
       } else if (interpolation === "multiframe") {
         // Multi-frame: draw ghost cursors at intermediate positions
-        if (state.history.length >= 2 && instantSpeed > 2) {
-          const numGhosts = Math.min(8, Math.floor(instantSpeed / 5));
+        if (state.history.length >= 2 && instantSpeed > 1) {
+          const numGhosts = Math.min(12, Math.floor(instantSpeed / 3));
           const historySlice = state.history.slice(-(numGhosts + 1));
           
           // Draw ghosts from oldest to newest
           for (let i = 0; i < historySlice.length - 1; i++) {
             const pos = historySlice[i];
             const progress = i / (historySlice.length - 1);
-            const alpha = 0.05 + progress * 0.25;
-            drawCursor(ctx, pos.x, pos.y, state.angle, instantSpeed * 0.8, alpha);
+            const alpha = 0.15 + progress * 0.5;
+            drawCursor(ctx, pos.x, pos.y, state.angle, instantSpeed * 0.9, alpha);
           }
         }
         // Draw main cursor at current position
