@@ -6,7 +6,17 @@ interface TimestampedPos {
   t: number;
 }
 
-export type InterpolationMethod = "off" | "lerp" | "spline" | "multiframe";
+export type InterpolationMethod =
+  | "off"
+  | "lerp"
+  | "spline"
+  | "multiframe"
+  | "oneeuro"
+  | "spring"
+  | "hermite"
+  | "predictive"
+  | "kalman"
+  | "timebased";
 
 export interface CursorConfig {
   ellipseMultiplier: number;
@@ -35,6 +45,38 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     // Interpolated render position
     renderX: 0,
     renderY: 0,
+    // One Euro Filter state
+    oneEuroX: 0,
+    oneEuroY: 0,
+    oneEuroDx: 0,
+    oneEuroDy: 0,
+    oneEuroLastTime: 0,
+    // Spring state
+    springX: 0,
+    springY: 0,
+    springVx: 0,
+    springVy: 0,
+    // Hermite state
+    hermiteX: 0,
+    hermiteY: 0,
+    hermiteTangentX: 0,
+    hermiteTangentY: 0,
+    // Predictive state
+    predictiveX: 0,
+    predictiveY: 0,
+    predictiveVx: 0,
+    predictiveVy: 0,
+    // Kalman state
+    kalmanX: 0,
+    kalmanY: 0,
+    kalmanVx: 0,
+    kalmanVy: 0,
+    kalmanPx: 1,
+    kalmanPy: 1,
+    // Time-based smoothing state
+    timeBasedX: 0,
+    timeBasedY: 0,
+    timeBasedLastTime: 0,
   });
 
   // Keep config ref in sync
@@ -75,10 +117,24 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.visible = true;
       state.hasMoved = true;
 
-      // Initialize render position on first move
+      // Initialize all filter states on first move
       if (state.renderX === 0 && state.renderY === 0) {
         state.renderX = e.clientX;
         state.renderY = e.clientY;
+        state.oneEuroX = e.clientX;
+        state.oneEuroY = e.clientY;
+        state.oneEuroLastTime = now;
+        state.springX = e.clientX;
+        state.springY = e.clientY;
+        state.hermiteX = e.clientX;
+        state.hermiteY = e.clientY;
+        state.predictiveX = e.clientX;
+        state.predictiveY = e.clientY;
+        state.kalmanX = e.clientX;
+        state.kalmanY = e.clientY;
+        state.timeBasedX = e.clientX;
+        state.timeBasedY = e.clientY;
+        state.timeBasedLastTime = now;
       }
 
       state.history.push({ x: e.clientX, y: e.clientY, t: now });
@@ -212,6 +268,137 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
         // Draw main cursor at current position
         drawCursor(ctx, state.x, state.y, state.angle, instantSpeed);
+      } else if (interpolation === "oneeuro") {
+        // One Euro Filter - adaptive smoothing
+        const now = performance.now();
+        const dt = Math.max(0.001, (now - state.oneEuroLastTime) / 1000);
+        state.oneEuroLastTime = now;
+        
+        // Calculate derivative
+        const dx = (state.x - state.oneEuroX) / dt;
+        const dy = (state.y - state.oneEuroY) / dt;
+        
+        // Adaptive cutoff frequency based on speed
+        const minCutoff = 1.0;
+        const beta = 0.007;
+        const speed = Math.sqrt(dx * dx + dy * dy);
+        const cutoff = minCutoff + beta * speed;
+        
+        // Smoothing factor
+        const tau = 1.0 / (2 * Math.PI * cutoff);
+        const alpha = 1.0 / (1.0 + tau / dt);
+        
+        // Filter position
+        state.oneEuroX += alpha * (state.x - state.oneEuroX);
+        state.oneEuroY += alpha * (state.y - state.oneEuroY);
+        
+        // Filter derivative
+        state.oneEuroDx += alpha * (dx - state.oneEuroDx);
+        state.oneEuroDy += alpha * (dy - state.oneEuroDy);
+        
+        drawCursor(ctx, state.oneEuroX, state.oneEuroY, state.angle, instantSpeed);
+      } else if (interpolation === "spring") {
+        // Critically Damped Spring
+        const dt = 1 / 60; // Fixed timestep
+        const stiffness = 180;
+        const damping = 2 * Math.sqrt(stiffness); // Critical damping
+        
+        // Spring force
+        const forceX = (state.x - state.springX) * stiffness;
+        const forceY = (state.y - state.springY) * stiffness;
+        
+        // Update velocity with damping
+        state.springVx += (forceX - state.springVx * damping) * dt;
+        state.springVy += (forceY - state.springVy * damping) * dt;
+        
+        // Update position
+        state.springX += state.springVx * dt;
+        state.springY += state.springVy * dt;
+        
+        drawCursor(ctx, state.springX, state.springY, state.angle, instantSpeed);
+      } else if (interpolation === "hermite") {
+        // Hermite Interpolation
+        const lerpFactor = 0.15;
+        
+        // Update tangent (velocity)
+        const targetTangentX = (state.x - state.hermiteX) * 60;
+        const targetTangentY = (state.y - state.hermiteY) * 60;
+        state.hermiteTangentX += (targetTangentX - state.hermiteTangentX) * lerpFactor;
+        state.hermiteTangentY += (targetTangentY - state.hermiteTangentY) * lerpFactor;
+        
+        // Hermite basis functions
+        const t = 0.2;
+        const h00 = 2 * t * t * t - 3 * t * t + 1;
+        const h10 = t * t * t - 2 * t * t + t;
+        const h01 = -2 * t * t * t + 3 * t * t;
+        const h11 = t * t * t - t * t;
+        
+        // Interpolate position
+        state.hermiteX = h00 * state.hermiteX + h10 * state.hermiteTangentX + 
+                         h01 * state.x + h11 * state.hermiteTangentX;
+        state.hermiteY = h00 * state.hermiteY + h10 * state.hermiteTangentY + 
+                         h01 * state.y + h11 * state.hermiteTangentY;
+        
+        drawCursor(ctx, state.hermiteX, state.hermiteY, state.angle, instantSpeed);
+      } else if (interpolation === "predictive") {
+        // Predictive Interpolation
+        const lookahead = 0.05; // 50ms prediction
+        
+        // Update velocity estimate
+        const lerpFactor = 0.3;
+        const targetVx = (state.x - state.predictiveX) * 60;
+        const targetVy = (state.y - state.predictiveY) * 60;
+        state.predictiveVx += (targetVx - state.predictiveVx) * lerpFactor;
+        state.predictiveVy += (targetVy - state.predictiveVy) * lerpFactor;
+        
+        // Update position with smoothing
+        state.predictiveX += (state.x - state.predictiveX) * 0.4;
+        state.predictiveY += (state.y - state.predictiveY) * 0.4;
+        
+        // Predict future position
+        const predX = state.predictiveX + state.predictiveVx * lookahead;
+        const predY = state.predictiveY + state.predictiveVy * lookahead;
+        
+        drawCursor(ctx, predX, predY, state.angle, instantSpeed);
+      } else if (interpolation === "kalman") {
+        // Kalman Filter
+        const processNoise = 0.1;
+        const measurementNoise = 0.5;
+        
+        // Predict step
+        const predictedX = state.kalmanX + state.kalmanVx / 60;
+        const predictedY = state.kalmanY + state.kalmanVy / 60;
+        const predictedPx = state.kalmanPx + processNoise;
+        const predictedPy = state.kalmanPy + processNoise;
+        
+        // Update step
+        const kalmanGainX = predictedPx / (predictedPx + measurementNoise);
+        const kalmanGainY = predictedPy / (predictedPy + measurementNoise);
+        
+        state.kalmanX = predictedX + kalmanGainX * (state.x - predictedX);
+        state.kalmanY = predictedY + kalmanGainY * (state.y - predictedY);
+        
+        state.kalmanVx = (state.kalmanX - predictedX) * 60;
+        state.kalmanVy = (state.kalmanY - predictedY) * 60;
+        
+        state.kalmanPx = (1 - kalmanGainX) * predictedPx;
+        state.kalmanPy = (1 - kalmanGainY) * predictedPy;
+        
+        drawCursor(ctx, state.kalmanX, state.kalmanY, state.angle, instantSpeed);
+      } else if (interpolation === "timebased") {
+        // Time-Based Exponential Smoothing
+        const now = performance.now();
+        const dt = Math.max(0.001, (now - state.timeBasedLastTime) / 1000);
+        state.timeBasedLastTime = now;
+        
+        // Time constant (smaller = faster response)
+        const tau = 0.03;
+        const alpha = 1 - Math.exp(-dt / tau);
+        
+        state.timeBasedX += alpha * (state.x - state.timeBasedX);
+        state.timeBasedY += alpha * (state.y - state.timeBasedY);
+        
+        drawCursor(ctx, state.timeBasedX, state.timeBasedY, state.angle, instantSpeed);
       }
 
       animFrameRef.current = requestAnimationFrame(animate);

@@ -102,75 +102,27 @@ export default function App() {
                   INTERPOLATION
                 </span>
               </div>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button
-                  onClick={() => setConfig({ ...config, interpolation: "off" })}
-                  style={{
-                    flex: 1,
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    backgroundColor: config.interpolation === "off" ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    border: config.interpolation === "off" ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
-                    color: config.interpolation === "off" ? "#a5b4fc" : "#9ca3af",
-                    fontSize: "11px",
-                    fontFamily: "monospace",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  OFF
-                </button>
-                <button
-                  onClick={() => setConfig({ ...config, interpolation: "lerp" })}
-                  style={{
-                    flex: 1,
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    backgroundColor: config.interpolation === "lerp" ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    border: config.interpolation === "lerp" ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
-                    color: config.interpolation === "lerp" ? "#a5b4fc" : "#9ca3af",
-                    fontSize: "11px",
-                    fontFamily: "monospace",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  LERP
-                </button>
-                <button
-                  onClick={() => setConfig({ ...config, interpolation: "spline" })}
-                  style={{
-                    flex: 1,
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    backgroundColor: config.interpolation === "spline" ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    border: config.interpolation === "spline" ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
-                    color: config.interpolation === "spline" ? "#a5b4fc" : "#9ca3af",
-                    fontSize: "11px",
-                    fontFamily: "monospace",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  SPLINE
-                </button>
-                <button
-                  onClick={() => setConfig({ ...config, interpolation: "multiframe" })}
-                  style={{
-                    flex: 1,
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    backgroundColor: config.interpolation === "multiframe" ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    border: config.interpolation === "multiframe" ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
-                    color: config.interpolation === "multiframe" ? "#a5b4fc" : "#9ca3af",
-                    fontSize: "11px",
-                    fontFamily: "monospace",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  MULTI
-                </button>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px" }}>
+                {(["off", "lerp", "spline", "multiframe", "oneeuro", "spring", "hermite", "predictive", "kalman", "timebased"] as const).map((method) => (
+                  <button
+                    key={method}
+                    onClick={() => setConfig({ ...config, interpolation: method })}
+                    style={{
+                      padding: "8px 6px",
+                      borderRadius: "6px",
+                      backgroundColor: config.interpolation === method ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                      border: config.interpolation === method ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
+                      color: config.interpolation === method ? "#a5b4fc" : "#9ca3af",
+                      fontSize: "10px",
+                      fontFamily: "monospace",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {method === "oneeuro" ? "1€" : method === "timebased" ? "TIME" : method.slice(0, 4)}
+                  </button>
+                ))}
               </div>
             </div>
             <div style={{ marginTop: "16px" }}>
