@@ -173,7 +173,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
       if (stretchAmount > 1.05) {
         // Draw blurred glow layer
-        const blurAmount = Math.min(8, (stretchAmount - 1) * 4);
+        const blurAmount = Math.min(16, (stretchAmount - 1) * 8);
         ctx.save();
         ctx.filter = `blur(${blurAmount}px)`;
         ctx.translate(x, y);
