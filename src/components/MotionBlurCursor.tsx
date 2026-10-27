@@ -10,7 +10,6 @@ export type InterpolationMethod =
   | "off"
   | "lerp"
   | "spline"
-  | "multiframe"
   | "oneeuro"
   | "spring"
   | "hermite"
@@ -252,22 +251,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           state.renderY = state.y;
         }
         drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
-      } else if (interpolation === "multiframe") {
-        // Multi-frame: draw ghost cursors at intermediate positions
-        if (state.history.length >= 2 && instantSpeed > 1) {
-          const numGhosts = Math.min(12, Math.floor(instantSpeed / 3));
-          const historySlice = state.history.slice(-(numGhosts + 1));
-          
-          // Draw ghosts from oldest to newest
-          for (let i = 0; i < historySlice.length - 1; i++) {
-            const pos = historySlice[i];
-            const progress = i / (historySlice.length - 1);
-            const alpha = 0.15 + progress * 0.5;
-            drawCursor(ctx, pos.x, pos.y, state.angle, instantSpeed * 0.9, alpha);
-          }
-        }
-        // Draw main cursor at current position
-        drawCursor(ctx, state.x, state.y, state.angle, instantSpeed);
       } else if (interpolation === "oneeuro") {
         // One Euro Filter - adaptive smoothing
         const now = performance.now();
