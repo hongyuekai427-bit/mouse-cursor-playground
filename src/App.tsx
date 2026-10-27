@@ -12,6 +12,7 @@ export default function App() {
     borderWidth: 1.5,
     clickShrink: 0.3,
     clickSpring: 0.15,
+    enableClickAnimation: true,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -315,6 +316,22 @@ export default function App() {
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
                   CLICK ANIMATION
                 </span>
+              </div>
+              <div style={{ marginBottom: "12px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={config.enableClickAnimation}
+                    onChange={(e) => setConfig({ ...config, enableClickAnimation: e.target.checked })}
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      cursor: "pointer",
+                      accentColor: "#6366f1",
+                    }}
+                  />
+                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE CLICK ANIMATION</span>
+                </label>
               </div>
               <SliderRow
                 label="Click Shrink"

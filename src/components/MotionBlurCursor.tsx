@@ -25,6 +25,7 @@ export interface CursorConfig {
   borderWidth: number;
   clickShrink: number;
   clickSpring: number;
+  enableClickAnimation: boolean;
 }
 
 interface MotionBlurCursorProps {
@@ -154,6 +155,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     };
 
     const handleMouseDown = () => {
+      if (!configRef.current.enableClickAnimation) return;
       const clickShrink = configRef.current.clickShrink;
       state.clickScale = 1 - clickShrink;
       state.clickVelocity = 0;
