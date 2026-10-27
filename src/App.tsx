@@ -10,6 +10,8 @@ export default function App() {
     enableStretch: true,
     borderColor: "#000000",
     borderWidth: 1.5,
+    clickShrink: 0.3,
+    clickSpring: 0.15,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -307,6 +309,30 @@ export default function App() {
               step={0.5}
               onChange={(v) => setConfig({ ...config, borderWidth: v })}
             />
+
+            <div style={{ marginTop: "16px", marginBottom: "14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
+                  CLICK ANIMATION
+                </span>
+              </div>
+              <SliderRow
+                label="Click Shrink"
+                value={config.clickShrink}
+                min={0}
+                max={0.9}
+                step={0.05}
+                onChange={(v) => setConfig({ ...config, clickShrink: v })}
+              />
+              <SliderRow
+                label="Click Spring"
+                value={config.clickSpring}
+                min={0.05}
+                max={0.5}
+                step={0.01}
+                onChange={(v) => setConfig({ ...config, clickSpring: v })}
+              />
+            </div>
           </div>
         )}
       </div>

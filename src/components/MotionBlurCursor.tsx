@@ -23,6 +23,8 @@ export interface CursorConfig {
   enableStretch: boolean;
   borderColor: string;
   borderWidth: number;
+  clickShrink: number;
+  clickSpring: number;
 }
 
 interface MotionBlurCursorProps {
@@ -73,6 +75,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     timeBasedX: 0,
     timeBasedY: 0,
     timeBasedLastTime: 0,
+    // Click animation state
+    clickScale: 1,
+    clickVelocity: 0,
   });
 
   // Keep config ref in sync
@@ -148,6 +153,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.visible = true;
     };
 
+    const handleMouseDown = () => {
+      const clickShrink = configRef.current.clickShrink;
+      state.clickScale = 1 - clickShrink;
+      state.clickVelocity = 0;
+    };
+
+    const handleMouseUp = () => {
+      // Spring will animate back in the render loop
+    };
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
         state.smoothSpeed = 0;
@@ -200,6 +215,28 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       // Use instantaneous speed directly
       state.smoothSpeed = instantSpeed;
       state.angle = instantAngle;
+
+      // Update click spring animation
+      if (state.clickScale < 1) {
+        const clickSpring = configRef.current.clickSpring;
+        const target = 1;
+        const force = (target - state.clickScale) * 0.5;
+        state.clickVelocity += force;
+        state.clickVelocity *= (1 - clickSpring);
+        state.clickScale += state.clickVelocity;
+        
+        // Clamp to prevent overshooting too much
+        if (state.clickScale > 1.05) {
+          state.clickScale = 1.05;
+          state.clickVelocity *= -0.3;
+        }
+        
+        // Stop animation when close enough
+        if (Math.abs(state.clickScale - 1) < 0.01 && Math.abs(state.clickVelocity) < 0.01) {
+          state.clickScale = 1;
+          state.clickVelocity = 0;
+        }
+      }
 
       const config = configRef.current;
       const interpolation = config.interpolation;
@@ -360,6 +397,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const enableStretch = config.enableStretch;
       const borderColor = config.borderColor;
       const borderWidth = config.borderWidth;
+      const clickScale = state.clickScale;
       
       // Convert hex color to RGB
       const hex = cursorColor.replace('#', '');
@@ -372,6 +410,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const br = parseInt(borderHex.substring(0, 2), 16);
       const bg = parseInt(borderHex.substring(2, 4), 16);
       const bb = parseInt(borderHex.substring(4, 6), 16);
+
+      // Apply click scale
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(clickScale, clickScale);
+      ctx.translate(-x, -y);
 
       // Stretch based on speed (only if enabled)
       const stretchThreshold = 8;
@@ -442,11 +486,15 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }
+      
+      ctx.restore();
     };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     document.documentElement.addEventListener("mouseleave", handlePointerLeave);
     document.documentElement.addEventListener("mouseenter", handlePointerEnter);
+    window.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("resize", resizeCanvas);
 
@@ -457,6 +505,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       window.removeEventListener("pointermove", handlePointerMove);
       document.documentElement.removeEventListener("mouseleave", handlePointerLeave);
       document.documentElement.removeEventListener("mouseenter", handlePointerEnter);
+      window.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("resize", resizeCanvas);
       motionQuery.removeEventListener("change", handleMotionChange);
