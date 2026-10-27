@@ -176,7 +176,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        ctx.scale(innerStretchAmount, 1 / innerStretchAmount);
+        ctx.scale(innerStretchAmount, 1 / Math.sqrt(innerStretchAmount));
         ctx.beginPath();
         ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(99, 102, 241, 1)";
@@ -187,7 +187,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        ctx.scale(stretchAmount, 1 / stretchAmount);
+        ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
         ctx.beginPath();
         ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
