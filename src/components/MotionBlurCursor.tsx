@@ -29,6 +29,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     history: [] as TimestampedPos[],
     smoothSpeed: 0,
     angle: 0,
+    // Interpolated render position
+    renderX: 0,
+    renderY: 0,
   });
 
   // Keep config ref in sync
@@ -69,6 +72,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.visible = true;
       state.hasMoved = true;
 
+      // Initialize render position on first move
+      if (state.renderX === 0 && state.renderY === 0) {
+        state.renderX = e.clientX;
+        state.renderY = e.clientY;
+      }
+
       state.history.push({ x: e.clientX, y: e.clientY, t: now });
 
       // Keep only last 3 positions
@@ -80,6 +89,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     const handlePointerLeave = () => {
       state.visible = false;
       state.smoothSpeed = 0;
+      state.renderX = 0;
+      state.renderY = 0;
     };
 
     const handlePointerEnter = () => {
@@ -139,7 +150,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.smoothSpeed = instantSpeed;
       state.angle = instantAngle;
 
-      drawCursor(ctx, state.x, state.y, state.angle, instantSpeed);
+      // Interpolate render position toward target (smooth follow)
+      const lerpFactor = 0.35;
+      state.renderX += (state.x - state.renderX) * lerpFactor;
+      state.renderY += (state.y - state.renderY) * lerpFactor;
+
+      drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
