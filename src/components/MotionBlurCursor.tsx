@@ -90,6 +90,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
     const handlePointerLeave = () => {
       state.visible = false;
+      state.vx = 0;
+      state.vy = 0;
+      state.smoothSpeed = 0;
     };
 
     const handlePointerEnter = () => {
@@ -298,8 +301,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
-    window.addEventListener("pointerleave", handlePointerLeave);
-    window.addEventListener("pointerenter", handlePointerEnter);
+    document.documentElement.addEventListener("mouseleave", handlePointerLeave);
+    document.documentElement.addEventListener("mouseenter", handlePointerEnter);
     window.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("resize", resizeCanvas);
 
@@ -308,8 +311,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     return () => {
       cancelAnimationFrame(animFrameRef.current);
       window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerleave", handlePointerLeave);
-      window.removeEventListener("pointerenter", handlePointerEnter);
+      document.documentElement.removeEventListener("mouseleave", handlePointerLeave);
+      document.documentElement.removeEventListener("mouseenter", handlePointerEnter);
       window.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("resize", resizeCanvas);
       motionQuery.removeEventListener("change", handleMotionChange);
