@@ -38,3 +38,22 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
   border: none;
 }
+
+/* Custom scrollbar for control panel */
+div[style*="overflowY: auto"]::-webkit-scrollbar {
+  width: 6px;
+}
+
+div[style*="overflowY: auto"]::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 3px;
+}
+
+div[style*="overflowY: auto"]::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 3px;
+}
+
+div[style*="overflowY: auto"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.5);
+}

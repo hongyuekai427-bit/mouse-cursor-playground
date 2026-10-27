@@ -15,20 +15,7 @@ export default function App() {
     enableClickAnimation: true,
   });
   const [expanded, setExpanded] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  // Track window size for responsive scaling
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // Calculate scale factor based on window width
-  const scale = Math.max(0.7, Math.min(1.2, windowWidth / 1200));
 
   // Close panel when clicking outside
   useEffect(() => {
@@ -74,20 +61,20 @@ export default function App() {
             top: 0,
             left: "50%",
             transform: "translateX(-50%)",
-            padding: `${6 * scale}px ${16 * scale}px`,
+            padding: "6px 16px",
             backgroundColor: expanded ? "rgba(20, 20, 20, 0.95)" : "rgba(20, 20, 20, 0.7)",
-            borderBottomLeftRadius: `${8 * scale}px`,
-            borderBottomRightRadius: `${8 * scale}px`,
+            borderBottomLeftRadius: "8px",
+            borderBottomRightRadius: "8px",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
-            gap: `${8 * scale}px`,
+            gap: "8px",
             transition: "background-color 0.2s",
             border: "1px solid rgba(255,255,255,0.1)",
             borderTop: "none",
           }}
         >
-          <span style={{ color: "#9ca3af", fontSize: `${11 * scale}px`, fontFamily: "monospace", letterSpacing: "0.05em" }}>
+          <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
             {expanded ? "▲ HIDE" : "▼ CONTROLS"}
           </span>
         </div>
@@ -97,15 +84,17 @@ export default function App() {
           <div
             style={{
               position: "absolute",
-              top: `${32 * scale}px`,
+              top: "32px",
               left: "50%",
               transform: "translateX(-50%)",
               backgroundColor: "rgba(15, 15, 15, 0.95)",
               border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: `${10 * scale}px`,
-              padding: `${20 * scale}px ${24 * scale}px`,
-              minWidth: `${320 * scale}px`,
+              borderRadius: "10px",
+              padding: "20px 24px",
+              minWidth: "320px",
               backdropFilter: "blur(12px)",
+              maxHeight: "calc(100vh - 50px)",
+              overflowY: "auto",
             }}
           >
             <SliderRow
@@ -115,26 +104,25 @@ export default function App() {
               max={4}
               step={0.1}
               onChange={(v) => setConfig({ ...config, ellipseMultiplier: v })}
-              scale={scale}
             />
-            <div style={{ marginTop: `${16 * scale}px` }}>
-              <div style={{ marginBottom: `${8 * scale}px` }}>
-                <span style={{ color: "#9ca3af", fontSize: `${11 * scale}px`, fontFamily: "monospace", letterSpacing: "0.05em" }}>
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
                   INTERPOLATION
                 </span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: `${6 * scale}px` }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
                 {(["off", "lerp", "spline", "oneeuro", "spring", "kalman", "timebased"] as const).map((method) => (
                   <button
                     key={method}
                     onClick={() => setConfig({ ...config, interpolation: method })}
                     style={{
-                      padding: `${8 * scale}px ${6 * scale}px`,
-                      borderRadius: `${6 * scale}px`,
+                      padding: "8px 6px",
+                      borderRadius: "6px",
                       backgroundColor: config.interpolation === method ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
                       border: config.interpolation === method ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
                       color: config.interpolation === method ? "#a5b4fc" : "#9ca3af",
-                      fontSize: `${10 * scale}px`,
+                      fontSize: "10px",
                       fontFamily: "monospace",
                       cursor: "pointer",
                       transition: "all 0.2s",
@@ -146,20 +134,20 @@ export default function App() {
                 ))}
               </div>
             </div>
-            <div style={{ marginTop: `${16 * scale}px` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: `${8 * scale}px` }}>
-                <span style={{ color: "#9ca3af", fontSize: `${11 * scale}px`, fontFamily: "monospace" }}>BACKGROUND</span>
-                <span style={{ color: "#6366f1", fontSize: `${11 * scale}px`, fontFamily: "monospace" }}>{config.backgroundColor}</span>
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>BACKGROUND</span>
+                <span style={{ color: "#6366f1", fontSize: "11px", fontFamily: "monospace" }}>{config.backgroundColor}</span>
               </div>
-              <div style={{ display: "flex", gap: `${8 * scale}px`, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 {["#000000", "#0a0a0a", "#111111", "#1a1a1a", "#ffffff", "#0f172a", "#1e1b4b", "#18181b"].map((color) => (
                   <button
                     key={color}
                     onClick={() => setConfig({ ...config, backgroundColor: color })}
                     style={{
-                      width: `${28 * scale}px`,
-                      height: `${28 * scale}px`,
-                      borderRadius: `${6 * scale}px`,
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "6px",
                       backgroundColor: color,
                       border: config.backgroundColor === color ? "2px solid #6366f1" : "1px solid rgba(255,255,255,0.15)",
                       cursor: "pointer",
@@ -169,9 +157,9 @@ export default function App() {
                 ))}
                 <label
                   style={{
-                    width: `${28 * scale}px`,
-                    height: `${28 * scale}px`,
-                    borderRadius: `${6 * scale}px`,
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "6px",
                     border: "1px solid rgba(255,255,255,0.15)",
                     cursor: "pointer",
                     display: "flex",
@@ -181,7 +169,7 @@ export default function App() {
                     position: "relative",
                   }}
                 >
-                  <span style={{ fontSize: `${12 * scale}px`, color: "#9ca3af" }}>+</span>
+                  <span style={{ fontSize: "12px", color: "#9ca3af" }}>+</span>
                   <input
                     type="color"
                     value={config.backgroundColor}
@@ -197,20 +185,20 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ marginTop: `${16 * scale}px` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: `${8 * scale}px` }}>
-                <span style={{ color: "#9ca3af", fontSize: `${11 * scale}px`, fontFamily: "monospace" }}>CURSOR COLOR</span>
-                <span style={{ color: "#6366f1", fontSize: `${11 * scale}px`, fontFamily: "monospace" }}>{config.cursorColor}</span>
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>CURSOR COLOR</span>
+                <span style={{ color: "#6366f1", fontSize: "11px", fontFamily: "monospace" }}>{config.cursorColor}</span>
               </div>
-              <div style={{ display: "flex", gap: `${8 * scale}px`, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 {["#6366f1", "#8b5cf6", "#ec4899", "#ef4444", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6"].map((color) => (
                   <button
                     key={color}
                     onClick={() => setConfig({ ...config, cursorColor: color })}
                     style={{
-                      width: `${28 * scale}px`,
-                      height: `${28 * scale}px`,
-                      borderRadius: `${6 * scale}px`,
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "6px",
                       backgroundColor: color,
                       border: config.cursorColor === color ? "2px solid #fff" : "1px solid rgba(255,255,255,0.15)",
                       cursor: "pointer",
@@ -220,9 +208,9 @@ export default function App() {
                 ))}
                 <label
                   style={{
-                    width: `${28 * scale}px`,
-                    height: `${28 * scale}px`,
-                    borderRadius: `${6 * scale}px`,
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "6px",
                     border: "1px solid rgba(255,255,255,0.15)",
                     cursor: "pointer",
                     display: "flex",
@@ -232,7 +220,7 @@ export default function App() {
                     position: "relative",
                   }}
                 >
-                  <span style={{ fontSize: `${12 * scale}px`, color: "#9ca3af" }}>+</span>
+                  <span style={{ fontSize: "12px", color: "#9ca3af" }}>+</span>
                   <input
                     type="color"
                     value={config.cursorColor}
@@ -248,37 +236,37 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ marginTop: `${16 * scale}px` }}>
-              <label style={{ display: "flex", alignItems: "center", gap: `${8 * scale}px`, cursor: "pointer" }}>
+            <div style={{ marginTop: "16px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                 <input
                   type="checkbox"
                   checked={config.enableStretch}
                   onChange={(e) => setConfig({ ...config, enableStretch: e.target.checked })}
                   style={{
-                    width: `${16 * scale}px`,
-                    height: `${16 * scale}px`,
+                    width: "16px",
+                    height: "16px",
                     cursor: "pointer",
                     accentColor: "#6366f1",
                   }}
                 />
-                <span style={{ color: "#9ca3af", fontSize: `${11 * scale}px`, fontFamily: "monospace" }}>ENABLE STRETCH</span>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE STRETCH</span>
               </label>
             </div>
 
-            <div style={{ marginTop: `${16 * scale}px` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: `${8 * scale}px` }}>
-                <span style={{ color: "#9ca3af", fontSize: `${11 * scale}px`, fontFamily: "monospace" }}>BORDER COLOR</span>
-                <span style={{ color: "#6366f1", fontSize: `${11 * scale}px`, fontFamily: "monospace" }}>{config.borderColor}</span>
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>BORDER COLOR</span>
+                <span style={{ color: "#6366f1", fontSize: "11px", fontFamily: "monospace" }}>{config.borderColor}</span>
               </div>
-              <div style={{ display: "flex", gap: `${8 * scale}px`, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 {["#000000", "#ffffff", "#1f2937", "#374151", "#6b7280"].map((color) => (
                   <button
                     key={color}
                     onClick={() => setConfig({ ...config, borderColor: color })}
                     style={{
-                      width: `${28 * scale}px`,
-                      height: `${28 * scale}px`,
-                      borderRadius: `${6 * scale}px`,
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "6px",
                       backgroundColor: color,
                       border: config.borderColor === color ? "2px solid #6366f1" : "1px solid rgba(255,255,255,0.15)",
                       cursor: "pointer",
@@ -288,9 +276,9 @@ export default function App() {
                 ))}
                 <label
                   style={{
-                    width: `${28 * scale}px`,
-                    height: `${28 * scale}px`,
-                    borderRadius: `${6 * scale}px`,
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "6px",
                     border: "1px solid rgba(255,255,255,0.15)",
                     cursor: "pointer",
                     display: "flex",
@@ -300,7 +288,7 @@ export default function App() {
                     position: "relative",
                   }}
                 >
-                  <span style={{ fontSize: `${12 * scale}px`, color: "#9ca3af" }}>+</span>
+                  <span style={{ fontSize: "12px", color: "#9ca3af" }}>+</span>
                   <input
                     type="color"
                     value={config.borderColor}
@@ -323,29 +311,28 @@ export default function App() {
               max={3}
               step={0.5}
               onChange={(v) => setConfig({ ...config, borderWidth: v })}
-              scale={scale}
             />
 
-            <div style={{ marginTop: `${16 * scale}px`, marginBottom: `${14 * scale}px` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: `${8 * scale}px` }}>
-                <span style={{ color: "#9ca3af", fontSize: `${11 * scale}px`, fontFamily: "monospace", letterSpacing: "0.05em" }}>
+            <div style={{ marginTop: "16px", marginBottom: "14px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
                   CLICK ANIMATION
                 </span>
               </div>
-              <div style={{ marginBottom: `${12 * scale}px` }}>
-                <label style={{ display: "flex", alignItems: "center", gap: `${8 * scale}px`, cursor: "pointer" }}>
+              <div style={{ marginBottom: "12px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={config.enableClickAnimation}
                     onChange={(e) => setConfig({ ...config, enableClickAnimation: e.target.checked })}
                     style={{
-                      width: `${16 * scale}px`,
-                      height: `${16 * scale}px`,
+                      width: "16px",
+                      height: "16px",
                       cursor: "pointer",
                       accentColor: "#6366f1",
                     }}
                   />
-                  <span style={{ color: "#9ca3af", fontSize: `${11 * scale}px`, fontFamily: "monospace" }}>ENABLE CLICK ANIMATION</span>
+                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE CLICK ANIMATION</span>
                 </label>
               </div>
               <SliderRow
@@ -355,7 +342,6 @@ export default function App() {
                 max={0.9}
                 step={0.05}
                 onChange={(v) => setConfig({ ...config, clickShrink: v })}
-                scale={scale}
               />
               <SliderRow
                 label="Click Spring"
@@ -364,7 +350,6 @@ export default function App() {
                 max={0.5}
                 step={0.01}
                 onChange={(v) => setConfig({ ...config, clickSpring: v })}
-                scale={scale}
               />
             </div>
           </div>
@@ -381,7 +366,6 @@ function SliderRow({
   max,
   step,
   onChange,
-  scale = 1,
 }: {
   label: string;
   value: number;
@@ -389,15 +373,14 @@ function SliderRow({
   max: number;
   step: number;
   onChange: (v: number) => void;
-  scale?: number;
 }) {
   return (
-    <div style={{ marginBottom: `${14 * scale}px` }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: `${6 * scale}px` }}>
-        <span style={{ color: "#9ca3af", fontSize: `${11 * scale}px`, fontFamily: "monospace", letterSpacing: "0.05em" }}>
+    <div style={{ marginBottom: "14px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+        <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
           {label.toUpperCase()}
         </span>
-        <span style={{ color: "#6366f1", fontSize: `${11 * scale}px`, fontFamily: "monospace" }}>{value.toFixed(1)}x</span>
+        <span style={{ color: "#6366f1", fontSize: "11px", fontFamily: "monospace" }}>{value.toFixed(1)}x</span>
       </div>
       <input
         type="range"
@@ -408,10 +391,10 @@ function SliderRow({
         onChange={(e) => onChange(parseFloat(e.target.value))}
         style={{
           width: "100%",
-          height: `${4 * scale}px`,
+          height: "4px",
           appearance: "none",
           background: "rgba(255,255,255,0.1)",
-          borderRadius: `${2 * scale}px`,
+          borderRadius: "2px",
           outline: "none",
           cursor: "pointer",
           accentColor: "#6366f1",
