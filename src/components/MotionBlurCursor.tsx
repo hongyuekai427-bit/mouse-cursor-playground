@@ -12,7 +12,6 @@ export type InterpolationMethod =
   | "spline"
   | "oneeuro"
   | "spring"
-  | "hermite"
   | "kalman"
   | "timebased";
 
@@ -54,11 +53,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     springY: 0,
     springVx: 0,
     springVy: 0,
-    // Hermite state
-    hermiteX: 0,
-    hermiteY: 0,
-    hermiteTangentX: 0,
-    hermiteTangentY: 0,
     // Predictive state
     predictiveX: 0,
     predictiveY: 0,
@@ -124,8 +118,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.oneEuroLastTime = now;
         state.springX = e.clientX;
         state.springY = e.clientY;
-        state.hermiteX = e.clientX;
-        state.hermiteY = e.clientY;
         state.predictiveX = e.clientX;
         state.predictiveY = e.clientY;
         state.kalmanX = e.clientX;
@@ -302,30 +294,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
         
         drawCursor(ctx, state.springX, state.springY, state.angle, instantSpeed);
-      } else if (interpolation === "hermite") {
-        // Hermite Interpolation
-        const lerpFactor = 0.15;
-        
-        // Update tangent (velocity)
-        const targetTangentX = (state.x - state.hermiteX) * 60;
-        const targetTangentY = (state.y - state.hermiteY) * 60;
-        state.hermiteTangentX += (targetTangentX - state.hermiteTangentX) * lerpFactor;
-        state.hermiteTangentY += (targetTangentY - state.hermiteTangentY) * lerpFactor;
-        
-        // Hermite basis functions
-        const t = 0.2;
-        const h00 = 2 * t * t * t - 3 * t * t + 1;
-        const h10 = t * t * t - 2 * t * t + t;
-        const h01 = -2 * t * t * t + 3 * t * t;
-        const h11 = t * t * t - t * t;
-        
-        // Interpolate position
-        state.hermiteX = h00 * state.hermiteX + h10 * state.hermiteTangentX + 
-                         h01 * state.x + h11 * state.hermiteTangentX;
-        state.hermiteY = h00 * state.hermiteY + h10 * state.hermiteTangentY + 
-                         h01 * state.y + h11 * state.hermiteTangentY;
-        
-        drawCursor(ctx, state.hermiteX, state.hermiteY, state.angle, instantSpeed);
       } else if (interpolation === "kalman") {
         // Kalman Filter
         const processNoise = 0.1;

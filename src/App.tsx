@@ -103,7 +103,7 @@ export default function App() {
                 </span>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
-                {(["off", "lerp", "spline", "oneeuro", "spring", "hermite", "kalman", "timebased"] as const).map((method) => (
+                {(["off", "lerp", "spline", "oneeuro", "spring", "kalman", "timebased"] as const).map((method) => (
                   <button
                     key={method}
                     onClick={() => setConfig({ ...config, interpolation: method })}
