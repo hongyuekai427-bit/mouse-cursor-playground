@@ -465,7 +465,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         left: 0,
         width: "100vw",
         height: "100vh",
-        zIndex: 9999,
+        zIndex: 99999,
         pointerEvents: "none",
       }}
       aria-hidden="true"
