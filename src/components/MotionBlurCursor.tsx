@@ -280,22 +280,28 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         
         drawCursor(ctx, state.oneEuroX, state.oneEuroY, state.angle, instantSpeed);
       } else if (interpolation === "spring") {
-        // Critically Damped Spring
+        // Critically Damped Spring - More Responsive
         const dt = 1 / 60; // Fixed timestep
-        const stiffness = 180;
+        const stiffness = 900; // Increased from 180 for faster response
         const damping = 2 * Math.sqrt(stiffness); // Critical damping
         
-        // Spring force
-        const forceX = (state.x - state.springX) * stiffness;
-        const forceY = (state.y - state.springY) * stiffness;
+        // Run multiple sub-steps for stability at high stiffness
+        const subSteps = 4;
+        const subDt = dt / subSteps;
         
-        // Update velocity with damping
-        state.springVx += (forceX - state.springVx * damping) * dt;
-        state.springVy += (forceY - state.springVy * damping) * dt;
-        
-        // Update position
-        state.springX += state.springVx * dt;
-        state.springY += state.springVy * dt;
+        for (let i = 0; i < subSteps; i++) {
+          // Spring force
+          const forceX = (state.x - state.springX) * stiffness;
+          const forceY = (state.y - state.springY) * stiffness;
+          
+          // Update velocity with damping
+          state.springVx += (forceX - state.springVx * damping) * subDt;
+          state.springVy += (forceY - state.springVy * damping) * subDt;
+          
+          // Update position
+          state.springX += state.springVx * subDt;
+          state.springY += state.springVy * subDt;
+        }
         
         drawCursor(ctx, state.springX, state.springY, state.angle, instantSpeed);
       } else if (interpolation === "hermite") {
