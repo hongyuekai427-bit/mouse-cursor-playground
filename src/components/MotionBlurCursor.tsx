@@ -172,33 +172,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
       if (stretchAmount > 1.05) {
-        // Draw blurred glow layer
-        const blurAmount = Math.min(16, (stretchAmount - 1) * 8);
-        ctx.save();
-        ctx.filter = `blur(${blurAmount}px)`;
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
-        ctx.beginPath();
-        ctx.arc(0, 0, ringRadius * 1.2, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(99, 102, 241, 0.4)";
-        ctx.fill();
-        ctx.restore();
-
-        // Draw blurred outer ring
-        ctx.save();
-        ctx.filter = `blur(${blurAmount}px)`;
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
-        ctx.beginPath();
-        ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(99, 102, 241, 0.6)";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-
-        // Draw sharp core layer on top
+        // Draw stretched inner dot (0.5x stretch) along movement direction
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
@@ -209,6 +183,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.fill();
         ctx.restore();
 
+        // Draw stretched outer ring along movement direction
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
