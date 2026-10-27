@@ -178,37 +178,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       animFrameRef.current = requestAnimationFrame(animate);
     };
 
-    // Draw a curved cursor as a thick curved line
-    const drawCurvedDot = (
-      ctx: CanvasRenderingContext2D,
-      x: number,
-      y: number,
-      angle: number,
-      radiusX: number,
-      radiusY: number,
-      curveAmount: number,
-      filled: boolean
-    ) => {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle);
 
-      // Simple curved line (like a banana/comma)
-      const length = Math.min(radiusX, 10);
-      const curve = curveAmount * 5;
-      const thickness = filled ? radiusY * 2 : radiusY * 2.5;
-      
-      ctx.beginPath();
-      ctx.moveTo(-length, curve);
-      ctx.quadraticCurveTo(0, -curve, length, curve);
-      
-      ctx.strokeStyle = filled ? "rgba(99, 102, 241, 1)" : "rgba(99, 102, 241, 0.9)";
-      ctx.lineWidth = thickness;
-      ctx.lineCap = "round";
-      ctx.stroke();
-
-      ctx.restore();
-    };
 
     const drawCursor = (
       ctx: CanvasRenderingContext2D,
@@ -277,10 +247,10 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
         
         // Apply bend if there's significant turning
-        if (Math.abs(totalAngleChange) > 0.1 && totalDistance > 1) {
-          const bendStrength = Math.min(1, Math.abs(totalAngleChange) / 1.5) * 
-                              Math.min(1, (stretchAmount - 1) / 1.5);
-          bendAngle = totalAngleChange * bendStrength * 0.5;
+        if (Math.abs(totalAngleChange) > 0.05 && totalDistance > 1) {
+          const bendStrength = Math.min(1, Math.abs(totalAngleChange) / 0.8) * 
+                              Math.min(1, (stretchAmount - 1) / 1.0);
+          bendAngle = totalAngleChange * bendStrength * 0.8;
         }
       }
 
@@ -289,13 +259,28 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const ringY = state.ringY;
 
       if (stretchAmount > 1.05) {
-        // Draw curved inner dot
-        const innerCurveAmount = bendAngle * 0.5;
-        drawCurvedDot(ctx, x, y, angle, baseRadius * innerStretchAmount, baseRadius, innerCurveAmount, true);
+        // Draw stretched inner dot (0.5x stretch)
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle + bendAngle * 0.5);
+        ctx.scale(innerStretchAmount, 1);
+        ctx.beginPath();
+        ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(99, 102, 241, 1)";
+        ctx.fill();
+        ctx.restore();
 
-        // Draw curved outer ring with delay
-        const ringCurveAmount = bendAngle;
-        drawCurvedDot(ctx, ringX, ringY, angle, ringRadius * stretchAmount, ringRadius, ringCurveAmount, false);
+        // Draw stretched outer ring with delay
+        ctx.save();
+        ctx.translate(ringX, ringY);
+        ctx.rotate(angle + bendAngle);
+        ctx.scale(stretchAmount, 1);
+        ctx.beginPath();
+        ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
       } else {
         // Draw inner dot at exact cursor position
         ctx.beginPath();
