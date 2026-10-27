@@ -172,22 +172,22 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
       if (stretchAmount > 1.05) {
-        // Draw stretched inner dot (0.5x stretch) along movement direction only
+        // Draw stretched inner dot (0.5x stretch) along movement direction, thinner when stretched
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        ctx.scale(innerStretchAmount, 1);
+        ctx.scale(innerStretchAmount, 1 / innerStretchAmount);
         ctx.beginPath();
         ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(99, 102, 241, 1)";
         ctx.fill();
         ctx.restore();
 
-        // Draw stretched outer ring along movement direction only
+        // Draw stretched outer ring along movement direction, thinner when stretched
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        ctx.scale(stretchAmount, 1);
+        ctx.scale(stretchAmount, 1 / stretchAmount);
         ctx.beginPath();
         ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
