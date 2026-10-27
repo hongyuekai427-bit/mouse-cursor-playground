@@ -185,6 +185,19 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.fill();
         ctx.restore();
 
+        // Draw blurred outer ring
+        ctx.save();
+        ctx.filter = `blur(${blurAmount}px)`;
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
+        ctx.beginPath();
+        ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(99, 102, 241, 0.6)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+
         // Draw sharp core layer on top
         ctx.save();
         ctx.translate(x, y);
