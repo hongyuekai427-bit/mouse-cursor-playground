@@ -172,28 +172,17 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
       if (stretchAmount > 1.05) {
-        // Draw blurred background layer
+        // Draw blurred glow layer
+        const blurAmount = Math.min(8, (stretchAmount - 1) * 4);
         ctx.save();
-        ctx.filter = `blur(${(stretchAmount - 1) * 1.5}px)`;
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.scale(innerStretchAmount, 1 / Math.sqrt(innerStretchAmount));
-        ctx.beginPath();
-        ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(99, 102, 241, 0.6)";
-        ctx.fill();
-        ctx.restore();
-
-        ctx.save();
-        ctx.filter = `blur(${(stretchAmount - 1) * 1.5}px)`;
+        ctx.filter = `blur(${blurAmount}px)`;
         ctx.translate(x, y);
         ctx.rotate(angle);
         ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
         ctx.beginPath();
-        ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(99, 102, 241, 0.5)";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+        ctx.arc(0, 0, ringRadius * 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(99, 102, 241, 0.4)";
+        ctx.fill();
         ctx.restore();
 
         // Draw sharp core layer on top
