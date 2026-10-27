@@ -144,8 +144,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     };
 
     const handlePointerLeave = () => {
-      // Only hide cursor if it's within 3px of the border
-      const threshold = 3;
+      // Only hide cursor if it's within 10px of the border
+      const threshold = 10;
       const x = state.x;
       const y = state.y;
       const width = window.innerWidth;
