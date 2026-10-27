@@ -144,25 +144,10 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     };
 
     const handlePointerLeave = () => {
-      // Only hide cursor if it's within 10px of the border
-      const threshold = 10;
-      const x = state.x;
-      const y = state.y;
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      
-      const nearBorder = 
-        x <= threshold || 
-        x >= width - threshold || 
-        y <= threshold || 
-        y >= height - threshold;
-      
-      if (nearBorder) {
-        state.visible = false;
-        state.smoothSpeed = 0;
-        state.renderX = 0;
-        state.renderY = 0;
-      }
+      state.visible = false;
+      state.smoothSpeed = 0;
+      state.renderX = 0;
+      state.renderY = 0;
     };
 
     const handlePointerEnter = () => {
