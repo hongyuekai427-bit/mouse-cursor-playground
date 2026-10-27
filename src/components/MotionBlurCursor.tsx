@@ -19,6 +19,8 @@ export interface CursorConfig {
   ellipseMultiplier: number;
   backgroundColor: string;
   interpolation: InterpolationMethod;
+  cursorColor: string;
+  enableStretch: boolean;
 }
 
 interface MotionBlurCursorProps {
@@ -352,13 +354,20 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const ringRadius = 10;
       const config = configRef.current;
       const multiplier = config.ellipseMultiplier;
-      const h = state.history;
+      const cursorColor = config.cursorColor;
+      const enableStretch = config.enableStretch;
+      
+      // Convert hex color to RGB
+      const hex = cursorColor.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
 
-      // Stretch based on speed
+      // Stretch based on speed (only if enabled)
       const stretchThreshold = 8;
       const maxStretchSpeed = 40;
       let stretchAmount = 1;
-      if (speed > stretchThreshold) {
+      if (enableStretch && speed > stretchThreshold) {
         const t = Math.min(1, (speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold));
         stretchAmount = 1 + t * 1.5 * multiplier;
       }
@@ -374,7 +383,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.scale(innerStretchAmount, 1 / Math.sqrt(innerStretchAmount));
         ctx.beginPath();
         ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(99, 102, 241, ${alpha})`;
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
         ctx.fill();
         ctx.restore();
 
@@ -385,7 +394,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
         ctx.beginPath();
         ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(99, 102, 241, ${0.9 * alpha})`;
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
         ctx.lineWidth = 1.5;
         ctx.stroke();
         ctx.restore();
@@ -393,13 +402,13 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         // Draw inner dot at exact cursor position
         ctx.beginPath();
         ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(99, 102, 241, ${alpha})`;
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
         ctx.fill();
 
         // Draw outer ring synced with dot
         ctx.beginPath();
         ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(99, 102, 241, ${0.9 * alpha})`;
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }

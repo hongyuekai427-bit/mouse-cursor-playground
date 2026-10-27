@@ -6,6 +6,8 @@ export default function App() {
     ellipseMultiplier: 1,
     backgroundColor: "#000000",
     interpolation: "off",
+    cursorColor: "#6366f1",
+    enableStretch: true,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -174,6 +176,74 @@ export default function App() {
                   />
                 </label>
               </div>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>CURSOR COLOR</span>
+                <span style={{ color: "#6366f1", fontSize: "11px", fontFamily: "monospace" }}>{config.cursorColor}</span>
+              </div>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {["#6366f1", "#8b5cf6", "#ec4899", "#ef4444", "#f59e0b", "#10b981", "#06b6d4", "#3b82f6"].map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setConfig({ ...config, cursorColor: color })}
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "6px",
+                      backgroundColor: color,
+                      border: config.cursorColor === color ? "2px solid #fff" : "1px solid rgba(255,255,255,0.15)",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  />
+                ))}
+                <label
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    position: "relative",
+                  }}
+                >
+                  <span style={{ fontSize: "12px", color: "#9ca3af" }}>+</span>
+                  <input
+                    type="color"
+                    value={config.cursorColor}
+                    onChange={(e) => setConfig({ ...config, cursorColor: e.target.value })}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      opacity: 0,
+                      cursor: "pointer",
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={config.enableStretch}
+                  onChange={(e) => setConfig({ ...config, enableStretch: e.target.checked })}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    cursor: "pointer",
+                    accentColor: "#6366f1",
+                  }}
+                />
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE STRETCH</span>
+              </label>
             </div>
           </div>
         )}
