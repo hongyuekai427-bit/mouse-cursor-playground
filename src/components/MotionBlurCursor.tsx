@@ -144,7 +144,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     };
 
     const handlePointerLeave = () => {
-      // Keep cursor visible at last known position
+      state.visible = false;
       state.smoothSpeed = 0;
     };
 
