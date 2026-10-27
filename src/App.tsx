@@ -102,8 +102,8 @@ export default function App() {
                   INTERPOLATION
                 </span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
-                {(["off", "lerp", "spline", "oneeuro", "spring", "hermite", "predictive", "kalman", "timebased"] as const).map((method) => (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
+                {(["off", "lerp", "spline", "oneeuro", "spring", "hermite", "kalman", "timebased"] as const).map((method) => (
                   <button
                     key={method}
                     onClick={() => setConfig({ ...config, interpolation: method })}

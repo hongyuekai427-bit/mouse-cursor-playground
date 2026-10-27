@@ -13,7 +13,6 @@ export type InterpolationMethod =
   | "oneeuro"
   | "spring"
   | "hermite"
-  | "predictive"
   | "kalman"
   | "timebased";
 
@@ -323,26 +322,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
                          h01 * state.y + h11 * state.hermiteTangentY;
         
         drawCursor(ctx, state.hermiteX, state.hermiteY, state.angle, instantSpeed);
-      } else if (interpolation === "predictive") {
-        // Predictive Interpolation
-        const lookahead = 0.05; // 50ms prediction
-        
-        // Update velocity estimate
-        const lerpFactor = 0.3;
-        const targetVx = (state.x - state.predictiveX) * 60;
-        const targetVy = (state.y - state.predictiveY) * 60;
-        state.predictiveVx += (targetVx - state.predictiveVx) * lerpFactor;
-        state.predictiveVy += (targetVy - state.predictiveVy) * lerpFactor;
-        
-        // Update position with smoothing
-        state.predictiveX += (state.x - state.predictiveX) * 0.4;
-        state.predictiveY += (state.y - state.predictiveY) * 0.4;
-        
-        // Predict future position
-        const predX = state.predictiveX + state.predictiveVx * lookahead;
-        const predY = state.predictiveY + state.predictiveVy * lookahead;
-        
-        drawCursor(ctx, predX, predY, state.angle, instantSpeed);
       } else if (interpolation === "kalman") {
         // Kalman Filter
         const processNoise = 0.1;
