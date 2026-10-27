@@ -21,6 +21,8 @@ export interface CursorConfig {
   interpolation: InterpolationMethod;
   cursorColor: string;
   enableStretch: boolean;
+  borderColor: string;
+  borderWidth: number;
 }
 
 interface MotionBlurCursorProps {
@@ -356,12 +358,20 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const multiplier = config.ellipseMultiplier;
       const cursorColor = config.cursorColor;
       const enableStretch = config.enableStretch;
+      const borderColor = config.borderColor;
+      const borderWidth = config.borderWidth;
       
       // Convert hex color to RGB
       const hex = cursorColor.replace('#', '');
       const r = parseInt(hex.substring(0, 2), 16);
       const g = parseInt(hex.substring(2, 4), 16);
       const b = parseInt(hex.substring(4, 6), 16);
+      
+      // Convert border color to RGB
+      const borderHex = borderColor.replace('#', '');
+      const br = parseInt(borderHex.substring(0, 2), 16);
+      const bg = parseInt(borderHex.substring(2, 4), 16);
+      const bb = parseInt(borderHex.substring(4, 6), 16);
 
       // Stretch based on speed (only if enabled)
       const stretchThreshold = 8;
@@ -387,11 +397,22 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.fill();
         ctx.restore();
 
-        // Draw stretched outer ring along movement direction
+        // Draw stretched outer ring with border along movement direction
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
         ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
+        
+        // Draw border ring (outside face)
+        if (borderWidth > 0) {
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRadius + borderWidth / 2, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
+          ctx.lineWidth = borderWidth;
+          ctx.stroke();
+        }
+        
+        // Draw main outer ring
         ctx.beginPath();
         ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
@@ -404,6 +425,15 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
         ctx.fill();
+
+        // Draw border ring (outside face)
+        if (borderWidth > 0) {
+          ctx.beginPath();
+          ctx.arc(x, y, ringRadius + borderWidth / 2, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
+          ctx.lineWidth = borderWidth;
+          ctx.stroke();
+        }
 
         // Draw outer ring synced with dot
         ctx.beginPath();

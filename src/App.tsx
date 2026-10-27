@@ -8,6 +8,8 @@ export default function App() {
     interpolation: "off",
     cursorColor: "#6366f1",
     enableStretch: true,
+    borderColor: "#000000",
+    borderWidth: 1.5,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -245,6 +247,66 @@ export default function App() {
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE STRETCH</span>
               </label>
             </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>BORDER COLOR</span>
+                <span style={{ color: "#6366f1", fontSize: "11px", fontFamily: "monospace" }}>{config.borderColor}</span>
+              </div>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {["#000000", "#ffffff", "#1f2937", "#374151", "#6b7280"].map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setConfig({ ...config, borderColor: color })}
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "6px",
+                      backgroundColor: color,
+                      border: config.borderColor === color ? "2px solid #6366f1" : "1px solid rgba(255,255,255,0.15)",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  />
+                ))}
+                <label
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    position: "relative",
+                  }}
+                >
+                  <span style={{ fontSize: "12px", color: "#9ca3af" }}>+</span>
+                  <input
+                    type="color"
+                    value={config.borderColor}
+                    onChange={(e) => setConfig({ ...config, borderColor: e.target.value })}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      opacity: 0,
+                      cursor: "pointer",
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <SliderRow
+              label="Border Width"
+              value={config.borderWidth}
+              min={0}
+              max={3}
+              step={0.5}
+              onChange={(v) => setConfig({ ...config, borderWidth: v })}
+            />
           </div>
         )}
       </div>
