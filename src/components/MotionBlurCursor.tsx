@@ -31,9 +31,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     vy: 0,
     smoothSpeed: 0,
     angle: 0,
-    // Outer ring position with delay
-    ringX: 0,
-    ringY: 0,
   });
 
   // Keep config ref in sync
@@ -73,12 +70,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.y = e.clientY;
       state.visible = true;
       state.hasMoved = true;
-
-      // Initialize ring position on first move
-      if (state.ringX === 0 && state.ringY === 0) {
-        state.ringX = e.clientX;
-        state.ringY = e.clientY;
-      }
 
       state.history.push({ x: e.clientX, y: e.clientY, t: now });
 
@@ -171,11 +162,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.angle = Math.atan2(state.vy, state.vx);
       }
 
-      // Update outer ring position with 2ms delay (lerp factor ~0.75 at 60fps)
-      const lerpFactor = 0.75;
-      state.ringX += (state.x - state.ringX) * lerpFactor;
-      state.ringY += (state.y - state.ringY) * lerpFactor;
-
       drawCursor(ctx, state.x, state.y, state.angle, instantSpeed);
 
       animFrameRef.current = requestAnimationFrame(animate);
@@ -257,10 +243,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
       }
 
-      // Outer ring position with delay
-      const ringX = state.ringX;
-      const ringY = state.ringY;
-
       if (stretchAmount > 1.05) {
         // Draw stretched inner dot (0.5x stretch)
         ctx.save();
@@ -273,9 +255,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.fill();
         ctx.restore();
 
-        // Draw stretched outer ring with delay
+        // Draw stretched outer ring synced with dot
         ctx.save();
-        ctx.translate(ringX, ringY);
+        ctx.translate(x, y);
         ctx.rotate(angle + bendAngle);
         ctx.scale(stretchAmount, 1);
         ctx.beginPath();
@@ -291,9 +273,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.fillStyle = "rgba(99, 102, 241, 1)";
         ctx.fill();
 
-        // Draw outer ring with delay
+        // Draw outer ring synced with dot
         ctx.beginPath();
-        ctx.arc(ringX, ringY, ringRadius, 0, Math.PI * 2);
+        ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
         ctx.lineWidth = 1.5;
         ctx.stroke();
