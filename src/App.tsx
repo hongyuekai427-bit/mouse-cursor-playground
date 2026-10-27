@@ -5,7 +5,7 @@ export default function App() {
   const [config, setConfig] = useState<CursorConfig>({
     ellipseMultiplier: 1,
     backgroundColor: "#000000",
-    interpolation: "lerp",
+    interpolation: "off",
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -103,6 +103,23 @@ export default function App() {
                 </span>
               </div>
               <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  onClick={() => setConfig({ ...config, interpolation: "off" })}
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    backgroundColor: config.interpolation === "off" ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    border: config.interpolation === "off" ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
+                    color: config.interpolation === "off" ? "#a5b4fc" : "#9ca3af",
+                    fontSize: "11px",
+                    fontFamily: "monospace",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  OFF
+                </button>
                 <button
                   onClick={() => setConfig({ ...config, interpolation: "lerp" })}
                   style={{
