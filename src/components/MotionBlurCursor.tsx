@@ -172,20 +172,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         return;
       }
 
-      // Check if cursor is near border
-      const borderThreshold = 5;
-      const isNearBorder = 
-        state.x <= borderThreshold ||
-        state.x >= window.innerWidth - borderThreshold ||
-        state.y <= borderThreshold ||
-        state.y >= window.innerHeight - borderThreshold;
-
-      // Don't render if near border
-      if (isNearBorder) {
-        animFrameRef.current = requestAnimationFrame(animate);
-        return;
-      }
-
       if (reducedMotionRef.current) {
         drawCursor(ctx, state.x, state.y, 0, 0);
         animFrameRef.current = requestAnimationFrame(animate);
