@@ -5,6 +5,7 @@ export default function App() {
   const [config, setConfig] = useState<CursorConfig>({
     ellipseMultiplier: 1,
     backgroundColor: "#000000",
+    interpolation: "lerp",
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -95,6 +96,66 @@ export default function App() {
               step={0.1}
               onChange={(v) => setConfig({ ...config, ellipseMultiplier: v })}
             />
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
+                  INTERPOLATION
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  onClick={() => setConfig({ ...config, interpolation: "lerp" })}
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    backgroundColor: config.interpolation === "lerp" ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    border: config.interpolation === "lerp" ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
+                    color: config.interpolation === "lerp" ? "#a5b4fc" : "#9ca3af",
+                    fontSize: "11px",
+                    fontFamily: "monospace",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  LERP
+                </button>
+                <button
+                  onClick={() => setConfig({ ...config, interpolation: "spline" })}
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    backgroundColor: config.interpolation === "spline" ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    border: config.interpolation === "spline" ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
+                    color: config.interpolation === "spline" ? "#a5b4fc" : "#9ca3af",
+                    fontSize: "11px",
+                    fontFamily: "monospace",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  SPLINE
+                </button>
+                <button
+                  onClick={() => setConfig({ ...config, interpolation: "multiframe" })}
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    backgroundColor: config.interpolation === "multiframe" ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    border: config.interpolation === "multiframe" ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
+                    color: config.interpolation === "multiframe" ? "#a5b4fc" : "#9ca3af",
+                    fontSize: "11px",
+                    fontFamily: "monospace",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  MULTI
+                </button>
+              </div>
+            </div>
             <div style={{ marginTop: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>BACKGROUND</span>

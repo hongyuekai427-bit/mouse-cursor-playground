@@ -6,9 +6,12 @@ interface TimestampedPos {
   t: number;
 }
 
+export type InterpolationMethod = "lerp" | "spline" | "multiframe";
+
 export interface CursorConfig {
   ellipseMultiplier: number;
   backgroundColor: string;
+  interpolation: InterpolationMethod;
 }
 
 interface MotionBlurCursorProps {
@@ -150,12 +153,60 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.smoothSpeed = instantSpeed;
       state.angle = instantAngle;
 
-      // Interpolate render position toward target (smooth follow)
-      const lerpFactor = 0.35;
-      state.renderX += (state.x - state.renderX) * lerpFactor;
-      state.renderY += (state.y - state.renderY) * lerpFactor;
+      const config = configRef.current;
+      const interpolation = config.interpolation;
 
-      drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
+      if (interpolation === "lerp") {
+        // Linear interpolation
+        const lerpFactor = 0.35;
+        state.renderX += (state.x - state.renderX) * lerpFactor;
+        state.renderY += (state.y - state.renderY) * lerpFactor;
+        drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
+      } else if (interpolation === "spline") {
+        // Spline interpolation using Catmull-Rom
+        if (state.history.length >= 4) {
+          const points = state.history.slice(-4);
+          const t = 0.5; // Midpoint
+          const p0 = points[0];
+          const p1 = points[1];
+          const p2 = points[2];
+          const p3 = points[3];
+          
+          // Catmull-Rom spline calculation
+          const t2 = t * t;
+          const t3 = t2 * t;
+          
+          const x = 0.5 * ((2 * p1.x) +
+            (-p0.x + p2.x) * t +
+            (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+            (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+          
+          const y = 0.5 * ((2 * p1.y) +
+            (-p0.y + p2.y) * t +
+            (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+            (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+          
+          state.renderX = x;
+          state.renderY = y;
+        } else {
+          state.renderX = state.x;
+          state.renderY = state.y;
+        }
+        drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
+      } else if (interpolation === "multiframe") {
+        // Multi-frame: draw ghost cursors at intermediate positions
+        if (state.history.length >= 2 && instantSpeed > 5) {
+          const numGhosts = Math.min(5, Math.floor(instantSpeed / 10));
+          const historySlice = state.history.slice(-numGhosts - 1);
+          
+          for (let i = 0; i < historySlice.length - 1; i++) {
+            const pos = historySlice[i];
+            const alpha = 0.1 + (i / historySlice.length) * 0.3;
+            drawCursor(ctx, pos.x, pos.y, state.angle, instantSpeed, alpha);
+          }
+        }
+        drawCursor(ctx, state.x, state.y, state.angle, instantSpeed);
+      }
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
@@ -167,7 +218,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       x: number,
       y: number,
       angle: number,
-      speed: number
+      speed: number,
+      alpha: number = 1
     ) => {
       const baseRadius = 3;
       const ringRadius = 10;
@@ -195,7 +247,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.scale(innerStretchAmount, 1 / Math.sqrt(innerStretchAmount));
         ctx.beginPath();
         ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(99, 102, 241, 1)";
+        ctx.fillStyle = `rgba(99, 102, 241, ${alpha})`;
         ctx.fill();
         ctx.restore();
 
@@ -206,7 +258,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
         ctx.beginPath();
         ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
+        ctx.strokeStyle = `rgba(99, 102, 241, ${0.9 * alpha})`;
         ctx.lineWidth = 1.5;
         ctx.stroke();
         ctx.restore();
@@ -214,13 +266,13 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         // Draw inner dot at exact cursor position
         ctx.beginPath();
         ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(99, 102, 241, 1)";
+        ctx.fillStyle = `rgba(99, 102, 241, ${alpha})`;
         ctx.fill();
 
         // Draw outer ring synced with dot
         ctx.beginPath();
         ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(99, 102, 241, 0.9)";
+        ctx.strokeStyle = `rgba(99, 102, 241, ${0.9 * alpha})`;
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }
