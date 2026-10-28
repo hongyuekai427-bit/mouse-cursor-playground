@@ -31,7 +31,6 @@ export interface CursorConfig {
   showBlob: boolean;
   springStiffness: number;
   ellipseThinning: number;
-  enableGooey: boolean;
 }
 
 interface MotionBlurCursorProps {
@@ -200,17 +199,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         return;
       }
 
-      // Check if gooey effect should be applied (only near left/right edges)
-      const currentConfig = configRef.current;
-      const edgeThreshold = 100; // Distance from edge to trigger gooey
-      const nearLeftEdge = state.x < edgeThreshold;
-      const nearRightEdge = state.x > w - edgeThreshold;
-      const shouldApplyGooey = currentConfig.enableGooey && (nearLeftEdge || nearRightEdge);
-      
-      if (shouldApplyGooey) {
-        // Apply gooey effect using blur + contrast
-        ctx.filter = "blur(6px) contrast(25)";
-      }
+
 
 
 
@@ -556,11 +545,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
         
         drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed);
-      }
-
-      // Reset filter after rendering
-      if (shouldApplyGooey) {
-        ctx.filter = "none";
       }
 
       animFrameRef.current = requestAnimationFrame(animate);

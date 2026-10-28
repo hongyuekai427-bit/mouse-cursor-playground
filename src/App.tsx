@@ -18,7 +18,6 @@ export default function App() {
     showBlob: false,
     springStiffness: 900,
     ellipseThinning: 0.5,
-    enableGooey: false,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -281,28 +280,6 @@ export default function App() {
                 />
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE STRETCH</span>
               </label>
-            </div>
-
-            <div style={{ marginTop: "16px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={config.enableGooey}
-                  onChange={(e) => setConfig({ ...config, enableGooey: e.target.checked })}
-                  style={{
-                    width: "16px",
-                    height: "16px",
-                    cursor: "pointer",
-                    accentColor: "#6366f1",
-                  }}
-                />
-                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE GOOEY EFFECT</span>
-              </label>
-              <div style={{ marginTop: "6px", marginLeft: "24px" }}>
-                <span style={{ color: "#6b7280", fontSize: "10px", fontFamily: "monospace" }}>
-                  Active near left/right screen edges
-                </span>
-              </div>
             </div>
 
             <div style={{ marginTop: "16px" }}>
