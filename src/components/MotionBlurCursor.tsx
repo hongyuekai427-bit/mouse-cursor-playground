@@ -33,6 +33,9 @@ export interface CursorConfig {
   springStiffness: number;
   ellipseThinning: number;
   showHiddenCursor: boolean;
+  enableGooeyTrail: boolean;
+  trailLength: number;
+  trailBlobCount: number;
 }
 
 interface MotionBlurCursorProps {
@@ -95,6 +98,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     opacity: 1,
     targetOpacity: 1,
     fadeScale: 1,
+    // Gooey trail state
+    trailBlobs: [] as { x: number; y: number; vx: number; vy: number }[],
   });
 
   // Keep config ref in sync
@@ -543,10 +548,115 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.restore();
       }
 
+      // Draw gooey trail if enabled
+      if (config.enableGooeyTrail) {
+        drawGooeyTrail(ctx, state, config, state.x, state.y, instantSpeed, instantAngle);
+      }
+
       animFrameRef.current = requestAnimationFrame(animate);
     };
 
 
+
+    const drawGooeyTrail = (
+      ctx: CanvasRenderingContext2D,
+      state: typeof stateRef.current,
+      config: CursorConfig,
+      cursorX: number,
+      cursorY: number,
+      speed: number,
+      angle: number
+    ) => {
+      const trailLength = config.trailLength;
+      const blobCount = config.trailBlobCount;
+      const cursorColor = config.cursorColor;
+      
+      // Convert hex color to RGB
+      const hex = cursorColor.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      
+      // Initialize trail blobs if needed
+      if (state.trailBlobs.length === 0) {
+        for (let i = 0; i < blobCount; i++) {
+          state.trailBlobs.push({
+            x: cursorX,
+            y: cursorY,
+            vx: 0,
+            vy: 0,
+          });
+        }
+      }
+      
+      // Adjust blob count if changed
+      while (state.trailBlobs.length < blobCount) {
+        const lastBlob = state.trailBlobs[state.trailBlobs.length - 1] || { x: cursorX, y: cursorY };
+        state.trailBlobs.push({ x: lastBlob.x, y: lastBlob.y, vx: 0, vy: 0 });
+      }
+      while (state.trailBlobs.length > blobCount) {
+        state.trailBlobs.pop();
+      }
+      
+      // Update each trail blob with spring physics
+      const baseRadius = 8;
+      
+      for (let i = 0; i < state.trailBlobs.length; i++) {
+        const blob = state.trailBlobs[i];
+        const target = i === 0 
+          ? { x: cursorX, y: cursorY }
+          : state.trailBlobs[i - 1];
+        
+        // Calculate distance to target
+        const dx = target.x - blob.x;
+        const dy = target.y - blob.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // Progressive spring strength - first blobs follow much faster
+        const springStrength = 200.0 - (i / state.trailBlobs.length) * 80.0;
+        const damping = 0.99999995;
+        const maxSpeed = 20000;
+        
+        // Spring force toward target
+        const forceX = dx * springStrength;
+        const forceY = dy * springStrength;
+        
+        // Update velocity with damping
+        blob.vx = (blob.vx + forceX) * damping;
+        blob.vy = (blob.vy + forceY) * damping;
+        
+        // Limit maximum speed
+        const blobSpeed = Math.sqrt(blob.vx * blob.vx + blob.vy * blob.vy);
+        if (blobSpeed > maxSpeed) {
+          blob.vx = (blob.vx / blobSpeed) * maxSpeed;
+          blob.vy = (blob.vy / blobSpeed) * maxSpeed;
+        }
+        
+        // Update position
+        blob.x += blob.vx;
+        blob.y += blob.vy;
+      }
+      
+      // Apply gooey filter only to trail
+      ctx.save();
+      ctx.filter = "url(#gooey-cursor-filter)";
+      
+      // Draw trail blobs with decreasing size
+      for (let i = 0; i < state.trailBlobs.length; i++) {
+        const blob = state.trailBlobs[i];
+        const progress = i / state.trailBlobs.length;
+        const radius = baseRadius * (1 - progress * 0.5);
+        const alpha = 0.9 - progress * 0.5;
+        
+        ctx.beginPath();
+        ctx.arc(blob.x, blob.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        ctx.fill();
+      }
+      
+      // Reset filter immediately after drawing trail
+      ctx.restore();
+    };
 
     const drawCursor = (
       ctx: CanvasRenderingContext2D,
@@ -557,6 +667,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       alpha: number = 1
     ) => {
       const config = configRef.current;
+      
+      // Don't draw cursor when gooey trail is enabled
+      if (config.enableGooeyTrail) {
+        return;
+      }
+      
       const baseRadius = 3;
       const ringRadius = 10;
       const multiplier = config.ellipseMultiplier;
@@ -743,18 +859,42 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        zIndex: 99999,
-        pointerEvents: "none",
-      }}
-      aria-hidden="true"
-    />
+    <>
+      <svg
+        style={{
+          position: "absolute",
+          width: 0,
+          height: 0,
+          pointerEvents: "none",
+        }}
+        aria-hidden="true"
+      >
+        <defs>
+          <filter id="gooey-cursor-filter">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+            <feColorMatrix
+              in="blur"
+              mode="matrix"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -6"
+              result="goo"
+            />
+            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+          </filter>
+        </defs>
+      </svg>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 99999,
+          pointerEvents: "none",
+        }}
+        aria-hidden="true"
+      />
+    </>
   );
 }

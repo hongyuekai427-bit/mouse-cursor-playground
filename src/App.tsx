@@ -19,6 +19,9 @@ export default function App() {
     springStiffness: 900,
     ellipseThinning: 0.5,
     showHiddenCursor: false,
+    enableGooeyTrail: false,
+    trailLength: 0.75,
+    trailBlobCount: 8,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -283,9 +286,12 @@ export default function App() {
               </label>
             </div>
 
-            <div style={{ marginTop: "16px" }}>
+            <div style={{ marginTop: "16px", opacity: config.enableGooeyTrail ? 0.3 : 1, pointerEvents: config.enableGooeyTrail ? "none" : "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>CURSOR STYLE</span>
+                {config.enableGooeyTrail && (
+                  <span style={{ color: "#6b7280", fontSize: "10px", fontFamily: "monospace" }}>DISABLED IN GOOEY MODE</span>
+                )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
@@ -370,6 +376,44 @@ export default function App() {
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>SHOW HIDDEN CURSOR</span>
               </label>
             </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={config.enableGooeyTrail}
+                  onChange={(e) => setConfig({ ...config, enableGooeyTrail: e.target.checked })}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    cursor: "pointer",
+                    accentColor: "#6366f1",
+                  }}
+                />
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE GOOEY TRAIL</span>
+              </label>
+            </div>
+
+            {config.enableGooeyTrail && (
+              <>
+                <SliderRow
+                  label="Trail Length"
+                  value={config.trailLength}
+                  min={0.3}
+                  max={1.5}
+                  step={0.05}
+                  onChange={(v) => setConfig({ ...config, trailLength: v })}
+                />
+                <SliderRow
+                  label="Trail Blob Count"
+                  value={config.trailBlobCount}
+                  min={3}
+                  max={15}
+                  step={1}
+                  onChange={(v) => setConfig({ ...config, trailBlobCount: v })}
+                />
+              </>
+            )}
 
             <div style={{ marginTop: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
