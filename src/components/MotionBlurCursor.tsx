@@ -162,8 +162,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     const handlePointerLeave = () => {
       state.targetOpacity = 0;
       state.smoothSpeed = 0;
-      state.clickScale = 1; // Reset click scale when leaving
-      state.clickVelocity = 0;
     };
 
     const handlePointerEnter = () => {
@@ -244,6 +242,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       // Update opacity (fade in/out)
       const fadeSpeed = 0.15; // Faster speed for fade
       state.opacity += (state.targetOpacity - state.opacity) * fadeSpeed;
+      
+      // Scale cursor based on opacity (shrink when fading out, expand when fading in)
+      state.clickScale = state.opacity;
       
       // If opacity is very low and target is 0, stop rendering
       if (state.opacity < 0.01 && state.targetOpacity === 0) {
