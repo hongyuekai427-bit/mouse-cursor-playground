@@ -291,7 +291,15 @@ export default function App() {
                   <input
                     type="checkbox"
                     checked={config.showBlob}
-                    onChange={(e) => setConfig({ ...config, showBlob: e.target.checked })}
+                    onChange={(e) => {
+                      const newShowBlob = e.target.checked;
+                      if (!newShowBlob && !config.showCircle && !config.showOuterRing) {
+                        // This is the last checked one, auto-check the last unchecked one
+                        setConfig({ ...config, showBlob: true, showOuterRing: true });
+                      } else {
+                        setConfig({ ...config, showBlob: newShowBlob });
+                      }
+                    }}
                     style={{
                       width: "16px",
                       height: "16px",
@@ -305,7 +313,15 @@ export default function App() {
                   <input
                     type="checkbox"
                     checked={config.showCircle}
-                    onChange={(e) => setConfig({ ...config, showCircle: e.target.checked })}
+                    onChange={(e) => {
+                      const newShowCircle = e.target.checked;
+                      if (!newShowCircle && !config.showBlob && !config.showOuterRing) {
+                        // This is the last checked one, auto-check the last unchecked one
+                        setConfig({ ...config, showCircle: true, showOuterRing: true });
+                      } else {
+                        setConfig({ ...config, showCircle: newShowCircle });
+                      }
+                    }}
                     style={{
                       width: "16px",
                       height: "16px",
@@ -319,7 +335,15 @@ export default function App() {
                   <input
                     type="checkbox"
                     checked={config.showOuterRing}
-                    onChange={(e) => setConfig({ ...config, showOuterRing: e.target.checked })}
+                    onChange={(e) => {
+                      const newShowOuterRing = e.target.checked;
+                      if (!newShowOuterRing && !config.showBlob && !config.showCircle) {
+                        // This is the last checked one, auto-check the last unchecked one
+                        setConfig({ ...config, showOuterRing: true, showCircle: true });
+                      } else {
+                        setConfig({ ...config, showOuterRing: newShowOuterRing });
+                      }
+                    }}
                     style={{
                       width: "16px",
                       height: "16px",
