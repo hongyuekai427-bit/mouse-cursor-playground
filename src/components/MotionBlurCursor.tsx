@@ -28,9 +28,11 @@ export interface CursorConfig {
   clickShrink: number;
   clickSpring: number;
   enableClickAnimation: boolean;
-  cursorStyle: CursorStyle;
-  // Spring interpolation responsiveness (0..1): higher = snappier
-  springResponsiveness: number;
+  showOuterRing: boolean;
+  showCircle: boolean;
+  showBlob: boolean;
+  springStiffness: number;
+  ellipseThinning: number;
 }
 
 interface MotionBlurCursorProps {
@@ -54,17 +56,20 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     // Interpolated render position
     renderX: 0,
     renderY: 0,
+    renderHistory: [] as { x: number; y: number; t: number }[],
     // One Euro Filter state
     oneEuroX: 0,
     oneEuroY: 0,
     oneEuroDx: 0,
     oneEuroDy: 0,
     oneEuroLastTime: 0,
+    oneEuroHistory: [] as { x: number; y: number; t: number }[],
     // Spring state
     springX: 0,
     springY: 0,
     springVx: 0,
     springVy: 0,
+    springHistory: [] as { x: number; y: number; t: number }[],
     // Predictive state
     predictiveX: 0,
     predictiveY: 0,
@@ -77,10 +82,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     kalmanVy: 0,
     kalmanPx: 1,
     kalmanPy: 1,
+    kalmanHistory: [] as { x: number; y: number; t: number }[],
     // Time-based smoothing state
     timeBasedX: 0,
     timeBasedY: 0,
     timeBasedLastTime: 0,
+    timeBasedHistory: [] as { x: number; y: number; t: number }[],
     // Click animation state
     clickScale: 1,
     clickVelocity: 0,
@@ -177,8 +184,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       }
     };
 
-
-
     const animate = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
@@ -195,6 +200,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         animFrameRef.current = requestAnimationFrame(animate);
         return;
       }
+
+
 
 
 
@@ -250,13 +257,58 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
       if (interpolation === "off") {
         // No interpolation - direct position
-        drawCursor(ctx, state.x, state.y, state.angle, instantSpeed);
+        // Record display position to history
+        const now = performance.now();
+        state.renderHistory.push({ x: state.x, y: state.y, t: now });
+        if (state.renderHistory.length > 10) state.renderHistory.shift();
+        
+        // Calculate speed and angle from display position history
+        let displaySpeed = 0;
+        let displayAngle = 0;
+        if (state.renderHistory.length >= 2) {
+          const last = state.renderHistory[state.renderHistory.length - 2];
+          const newest = state.renderHistory[state.renderHistory.length - 1];
+          const dx = newest.x - last.x;
+          const dy = newest.y - last.y;
+          const dt = newest.t - last.t;
+          if (dt > 0) {
+            displaySpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
+            if (displaySpeed > 0.5) {
+              displayAngle = Math.atan2(dy, dx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.x, state.y, displayAngle, displaySpeed);
       } else if (interpolation === "lerp") {
         // Linear interpolation
         const lerpFactor = 0.35;
         state.renderX += (state.x - state.renderX) * lerpFactor;
         state.renderY += (state.y - state.renderY) * lerpFactor;
-        drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
+        
+        // Record render position to history
+        const now = performance.now();
+        state.renderHistory.push({ x: state.renderX, y: state.renderY, t: now });
+        if (state.renderHistory.length > 10) state.renderHistory.shift();
+        
+        // Calculate render speed and angle
+        let renderSpeed = 0;
+        let renderAngle = state.angle;
+        if (state.renderHistory.length >= 2) {
+          const last = state.renderHistory[state.renderHistory.length - 2];
+          const newest = state.renderHistory[state.renderHistory.length - 1];
+          const dx = newest.x - last.x;
+          const dy = newest.y - last.y;
+          const dt = newest.t - last.t;
+          if (dt > 0) {
+            renderSpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
+            if (renderSpeed > 0.5) {
+              renderAngle = Math.atan2(dy, dx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.renderX, state.renderY, renderAngle, renderSpeed);
       } else if (interpolation === "spline") {
         // Spline interpolation using Catmull-Rom
         if (state.history.length >= 4) {
@@ -287,7 +339,30 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           state.renderX = state.x;
           state.renderY = state.y;
         }
-        drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
+        
+        // Record render position to history
+        const now = performance.now();
+        state.renderHistory.push({ x: state.renderX, y: state.renderY, t: now });
+        if (state.renderHistory.length > 10) state.renderHistory.shift();
+        
+        // Calculate render speed and angle
+        let renderSpeed = 0;
+        let renderAngle = state.angle;
+        if (state.renderHistory.length >= 2) {
+          const last = state.renderHistory[state.renderHistory.length - 2];
+          const newest = state.renderHistory[state.renderHistory.length - 1];
+          const dx = newest.x - last.x;
+          const dy = newest.y - last.y;
+          const dt = newest.t - last.t;
+          if (dt > 0) {
+            renderSpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
+            if (renderSpeed > 0.5) {
+              renderAngle = Math.atan2(dy, dx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.renderX, state.renderY, renderAngle, renderSpeed);
       } else if (interpolation === "oneeuro") {
         // One Euro Filter - adaptive smoothing
         const now = performance.now();
@@ -316,13 +391,32 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.oneEuroDx += alpha * (dx - state.oneEuroDx);
         state.oneEuroDy += alpha * (dy - state.oneEuroDy);
         
-        drawCursor(ctx, state.oneEuroX, state.oneEuroY, state.angle, instantSpeed);
+        // Record position to history
+        state.oneEuroHistory.push({ x: state.oneEuroX, y: state.oneEuroY, t: now });
+        if (state.oneEuroHistory.length > 10) state.oneEuroHistory.shift();
+        
+        // Calculate speed and angle from history
+        let filterSpeed = 0;
+        let filterAngle = state.angle;
+        if (state.oneEuroHistory.length >= 2) {
+          const last = state.oneEuroHistory[state.oneEuroHistory.length - 2];
+          const newest = state.oneEuroHistory[state.oneEuroHistory.length - 1];
+          const hdx = newest.x - last.x;
+          const hdy = newest.y - last.y;
+          const hdt = newest.t - last.t;
+          if (hdt > 0) {
+            filterSpeed = (Math.sqrt(hdx * hdx + hdy * hdy) / hdt) * 16.67;
+            if (filterSpeed > 0.5) {
+              filterAngle = Math.atan2(hdy, hdx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.oneEuroX, state.oneEuroY, filterAngle, filterSpeed);
       } else if (interpolation === "spring") {
         // Critically Damped Spring - responsiveness adjustable via config
         const dt = 1 / 60; // Fixed timestep
-        // Map responsiveness (0..1) to stiffness: low = lazy, high = snappy
-        const responsiveness = Math.min(1, Math.max(0, config.springResponsiveness));
-        const stiffness = 100 + responsiveness * 1700; // 100..1800
+        const stiffness = config.springStiffness;
         const damping = 2 * Math.sqrt(stiffness); // Critical damping
         
         // Run multiple sub-steps for stability at high stiffness
@@ -343,7 +437,34 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           state.springY += state.springVy * subDt;
         }
         
-        drawCursor(ctx, state.springX, state.springY, state.angle, instantSpeed);
+        // Record spring position to history
+        const now = performance.now();
+        state.springHistory.push({ x: state.springX, y: state.springY, t: now });
+        
+        // Keep only last 10 positions
+        if (state.springHistory.length > 10) {
+          state.springHistory.shift();
+        }
+        
+        // Calculate spring speed and angle from spring history
+        let springSpeed = 0;
+        let springAngle = state.angle;
+        
+        if (state.springHistory.length >= 2) {
+          const last = state.springHistory[state.springHistory.length - 2];
+          const newest = state.springHistory[state.springHistory.length - 1];
+          const dx = newest.x - last.x;
+          const dy = newest.y - last.y;
+          const dt = newest.t - last.t;
+          if (dt > 0) {
+            springSpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
+            if (springSpeed > 0.5) {
+              springAngle = Math.atan2(dy, dx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.springX, state.springY, springAngle, springSpeed);
       } else if (interpolation === "kalman") {
         // Kalman Filter
         const processNoise = 0.1;
@@ -368,7 +489,29 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.kalmanPx = (1 - kalmanGainX) * predictedPx;
         state.kalmanPy = (1 - kalmanGainY) * predictedPy;
         
-        drawCursor(ctx, state.kalmanX, state.kalmanY, state.angle, instantSpeed);
+        // Record position to history
+        const now = performance.now();
+        state.kalmanHistory.push({ x: state.kalmanX, y: state.kalmanY, t: now });
+        if (state.kalmanHistory.length > 10) state.kalmanHistory.shift();
+        
+        // Calculate speed and angle from history
+        let filterSpeed = 0;
+        let filterAngle = state.angle;
+        if (state.kalmanHistory.length >= 2) {
+          const last = state.kalmanHistory[state.kalmanHistory.length - 2];
+          const newest = state.kalmanHistory[state.kalmanHistory.length - 1];
+          const hdx = newest.x - last.x;
+          const hdy = newest.y - last.y;
+          const hdt = newest.t - last.t;
+          if (hdt > 0) {
+            filterSpeed = (Math.sqrt(hdx * hdx + hdy * hdy) / hdt) * 16.67;
+            if (filterSpeed > 0.5) {
+              filterAngle = Math.atan2(hdy, hdx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.kalmanX, state.kalmanY, filterAngle, filterSpeed);
       } else if (interpolation === "timebased") {
         // Time-Based Exponential Smoothing
         const now = performance.now();
@@ -382,7 +525,28 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.timeBasedX += alpha * (state.x - state.timeBasedX);
         state.timeBasedY += alpha * (state.y - state.timeBasedY);
         
-        drawCursor(ctx, state.timeBasedX, state.timeBasedY, state.angle, instantSpeed);
+        // Record position to history
+        state.timeBasedHistory.push({ x: state.timeBasedX, y: state.timeBasedY, t: now });
+        if (state.timeBasedHistory.length > 10) state.timeBasedHistory.shift();
+        
+        // Calculate speed and angle from history
+        let filterSpeed = 0;
+        let filterAngle = state.angle;
+        if (state.timeBasedHistory.length >= 2) {
+          const last = state.timeBasedHistory[state.timeBasedHistory.length - 2];
+          const newest = state.timeBasedHistory[state.timeBasedHistory.length - 1];
+          const hdx = newest.x - last.x;
+          const hdy = newest.y - last.y;
+          const hdt = newest.t - last.t;
+          if (hdt > 0) {
+            filterSpeed = (Math.sqrt(hdx * hdx + hdy * hdy) / hdt) * 16.67;
+            if (filterSpeed > 0.5) {
+              filterAngle = Math.atan2(hdy, hdx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed);
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
@@ -407,6 +571,10 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const borderColor = config.borderColor;
       const borderWidth = config.borderWidth;
       const clickScale = state.clickScale;
+      const showOuterRing = config.showOuterRing;
+      const showCircle = config.showCircle;
+      const showBlob = config.showBlob;
+      const ellipseThinning = config.ellipseThinning;
       
       // Convert hex color to RGB
       const hex = cursorColor.replace('#', '');
@@ -440,87 +608,109 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       // Inner dot stretches at 0.5x the outer ring
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
-      // Style determines which elements are drawn:
-      // - "dot":    small filled inner dot only.
-      // - "ring":   outer ring + border, plus the small inner dot (default look).
-      // - "filled": solid filled circle at the same radius as the outer ring,
-      //             with the same border and the same stretch/rotation behavior.
-      const showInnerDot = style !== "filled";
-      const showOuterRing = style !== "dot";
+      if (stretchAmount > 1.05) {
+        // Calculate short axis based on thinning slider (0.0 = 1.0x diameter, 1.0 = 0.25x diameter)
+        const shortAxis = 1.0 - (1.0 - 0.25) * ellipseThinning;
+        const innerShortAxis = 1.0 - (1.0 - 0.25) * ellipseThinning * 0.5;
 
-      // The visible element that stretches along the movement direction:
-      // in "filled" mode it is the big circle, so it uses the full ring stretch;
-      // otherwise the small dot stretches at 0.5x like before.
-      const primaryStretch = style === "filled" ? stretchAmount : innerStretchAmount;
-      const stretched = primaryStretch > 1.05;
-
-      if (stretched) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.scale(primaryStretch, 1 / Math.sqrt(primaryStretch));
-
-        if (style === "filled") {
-          // Filled circle at the outer ring's radius
+        // Draw stretched blob (filled 10px circle)
+        if (showBlob) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.scale(stretchAmount, shortAxis);
           ctx.beginPath();
           ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
           ctx.fill();
-        } else {
-          // Small inner dot
-          if (showInnerDot) {
+          
+          // Draw blob border
+          if (borderWidth > 0) {
             ctx.beginPath();
-            ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-            ctx.fill();
+            ctx.arc(0, 0, ringRadius + borderWidth / 2, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
           }
+          
+          ctx.restore();
         }
 
-        // Border ring (outside face) for ring/filled styles
-        if (showOuterRing && borderWidth > 0) {
+        // Draw stretched circle (small dot)
+        if (showCircle) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.scale(innerStretchAmount, innerShortAxis);
           ctx.beginPath();
-          ctx.arc(0, 0, ringRadius + borderWidth / 2, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
-          ctx.lineWidth = borderWidth;
-          ctx.stroke();
+          ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          ctx.fill();
+          ctx.restore();
         }
 
-        // Main outer ring stroke (only in "ring" style)
-        if (style === "ring") {
+        // Draw stretched outer ring with border along movement direction
+        if (showOuterRing) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.scale(stretchAmount, shortAxis);
+          
+          // Draw border ring (outside face)
+          if (borderWidth > 0) {
+            ctx.beginPath();
+            ctx.arc(0, 0, ringRadius + borderWidth / 2, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
+          }
+          
+          // Draw main outer ring
           ctx.beginPath();
           ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
           ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
           ctx.lineWidth = 1.5;
           ctx.stroke();
+          ctx.restore();
         }
-
-        ctx.restore();
       } else {
-        if (style === "filled") {
-          // Filled circle at exact cursor position, same radius as outer ring
+        // Draw blob (filled 10px circle)
+        if (showBlob) {
           ctx.beginPath();
           ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
           ctx.fill();
-        } else if (showInnerDot) {
-          // Draw inner dot at exact cursor position
+          
+          // Draw blob border
+          if (borderWidth > 0) {
+            ctx.beginPath();
+            ctx.arc(x, y, ringRadius + borderWidth / 2, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
+          }
+        }
+
+        // Draw circle (small dot)
+        if (showCircle) {
           ctx.beginPath();
           ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
           ctx.fill();
         }
 
-        // Border ring (outside face)
-        if (showOuterRing && borderWidth > 0) {
-          ctx.beginPath();
-          ctx.arc(x, y, ringRadius + borderWidth / 2, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
-          ctx.lineWidth = borderWidth;
-          ctx.stroke();
-        }
+        // Draw outer ring
+        if (showOuterRing) {
+          // Draw border ring (outside face)
+          if (borderWidth > 0) {
+            ctx.beginPath();
+            ctx.arc(x, y, ringRadius + borderWidth / 2, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
+          }
 
-        // Outer ring synced with dot (only in "ring" style)
-        if (style === "ring") {
+          // Draw main outer ring
           ctx.beginPath();
           ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
           ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;

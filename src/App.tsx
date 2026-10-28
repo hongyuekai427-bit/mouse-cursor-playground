@@ -13,8 +13,11 @@ export default function App() {
     clickShrink: 0.3,
     clickSpring: 0.15,
     enableClickAnimation: true,
-    cursorStyle: "ring",
-    springResponsiveness: 0.5,
+    showOuterRing: true,
+    showCircle: true,
+    showBlob: false,
+    springStiffness: 900,
+    ellipseThinning: 0.5,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -171,12 +174,24 @@ export default function App() {
               {config.interpolation === "spring" && (
                 <div style={{ marginTop: "12px" }}>
                   <SliderRow
-                    label="Spring Responsiveness"
-                    value={config.springResponsiveness}
+                    label="Spring Stiffness"
+                    value={config.springStiffness}
+                    min={100}
+                    max={2000}
+                    step={50}
+                    onChange={(v) => setConfig({ ...config, springStiffness: v })}
+                  />
+                </div>
+              )}
+              {config.enableStretch && (
+                <div style={{ marginTop: "12px" }}>
+                  <SliderRow
+                    label="Ellipse Thinning"
+                    value={config.ellipseThinning}
                     min={0}
                     max={1}
                     step={0.05}
-                    onChange={(v) => setConfig({ ...config, springResponsiveness: v })}
+                    onChange={(v) => setConfig({ ...config, ellipseThinning: v })}
                   />
                 </div>
               )}
@@ -298,6 +313,56 @@ export default function App() {
                 />
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE STRETCH</span>
               </label>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>CURSOR STYLE</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={config.showBlob}
+                    onChange={(e) => setConfig({ ...config, showBlob: e.target.checked })}
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      cursor: "pointer",
+                      accentColor: "#6366f1",
+                    }}
+                  />
+                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>BLOB</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={config.showCircle}
+                    onChange={(e) => setConfig({ ...config, showCircle: e.target.checked })}
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      cursor: "pointer",
+                      accentColor: "#6366f1",
+                    }}
+                  />
+                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>CIRCLE</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={config.showOuterRing}
+                    onChange={(e) => setConfig({ ...config, showOuterRing: e.target.checked })}
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      cursor: "pointer",
+                      accentColor: "#6366f1",
+                    }}
+                  />
+                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>OUTER RING</span>
+                </label>
+              </div>
             </div>
 
             <div style={{ marginTop: "16px" }}>
