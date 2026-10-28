@@ -15,6 +15,8 @@ export type InterpolationMethod =
   | "kalman"
   | "timebased";
 
+export type CursorStyle = "dot" | "ring" | "filled";
+
 export interface CursorConfig {
   ellipseMultiplier: number;
   backgroundColor: string;
@@ -412,7 +414,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         
         drawCursor(ctx, state.oneEuroX, state.oneEuroY, filterAngle, filterSpeed);
       } else if (interpolation === "spring") {
-        // Critically Damped Spring - More Responsive
+        // Critically Damped Spring - responsiveness adjustable via config
         const dt = 1 / 60; // Fixed timestep
         const stiffness = config.springStiffness;
         const damping = 2 * Math.sqrt(stiffness); // Critical damping
@@ -592,6 +594,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       ctx.scale(clickScale, clickScale);
       ctx.translate(-x, -y);
 
+      const style = config.cursorStyle;
+
       // Stretch based on speed (only if enabled)
       const stretchThreshold = 8;
       const maxStretchSpeed = 40;
@@ -600,7 +604,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         const t = Math.min(1, (speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold));
         stretchAmount = 1 + t * 1.5 * multiplier;
       }
-      
+
       // Inner dot stretches at 0.5x the outer ring
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
@@ -717,7 +721,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           ctx.stroke();
         }
       }
-      
+
       ctx.restore();
     };
 
