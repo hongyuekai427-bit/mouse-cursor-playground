@@ -14,8 +14,7 @@ export default function App() {
     clickSpring: 0.15,
     enableClickAnimation: true,
     showOuterRing: true,
-    showInnerRing: false,
-    filledCircle: true,
+    showCircle: true,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -264,8 +263,8 @@ export default function App() {
                 <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                   <input
                     type="checkbox"
-                    checked={config.filledCircle}
-                    onChange={(e) => setConfig({ ...config, filledCircle: e.target.checked })}
+                    checked={config.showCircle}
+                    onChange={(e) => setConfig({ ...config, showCircle: e.target.checked })}
                     style={{
                       width: "16px",
                       height: "16px",
@@ -273,21 +272,7 @@ export default function App() {
                       accentColor: "#6366f1",
                     }}
                   />
-                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>FILLED CIRCLE</span>
-                </label>
-                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={config.showInnerRing}
-                    onChange={(e) => setConfig({ ...config, showInnerRing: e.target.checked })}
-                    style={{
-                      width: "16px",
-                      height: "16px",
-                      cursor: "pointer",
-                      accentColor: "#6366f1",
-                    }}
-                  />
-                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>INNER RING</span>
+                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>CIRCLE</span>
                 </label>
                 <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                   <input
