@@ -48,7 +48,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     x: 0,
     y: 0,
     visible: false,
-    isFullscreen: false,
     hasMoved: false,
     history: [] as TimestampedPos[],
     smoothSpeed: 0,
@@ -184,12 +183,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       }
     };
 
-    // Fullscreen detection
-    const handleFullscreenChange = () => {
-      state.isFullscreen = !!document.fullscreenElement;
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-
     const animate = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
@@ -207,15 +200,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         return;
       }
 
-      // Check if gooey effect should be applied
+      // Check if gooey effect should be applied (only near left/right edges)
       const currentConfig = configRef.current;
-      const edgeThreshold = 150; // Distance from edge to trigger gooey
+      const edgeThreshold = 100; // Distance from edge to trigger gooey
       const nearLeftEdge = state.x < edgeThreshold;
       const nearRightEdge = state.x > w - edgeThreshold;
-      const shouldApplyGooey = currentConfig.enableGooey && (nearLeftEdge || nearRightEdge || state.isFullscreen);
+      const shouldApplyGooey = currentConfig.enableGooey && (nearLeftEdge || nearRightEdge);
       
       if (shouldApplyGooey) {
-        ctx.filter = "blur(8px) contrast(20)";
+        // Apply gooey effect using blur + contrast
+        ctx.filter = "blur(6px) contrast(25)";
       }
 
 
@@ -760,7 +754,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       window.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("resize", resizeCanvas);
       motionQuery.removeEventListener("change", handleMotionChange);
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, []);
 

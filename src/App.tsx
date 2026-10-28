@@ -300,7 +300,7 @@ export default function App() {
               </label>
               <div style={{ marginTop: "6px", marginLeft: "24px" }}>
                 <span style={{ color: "#6b7280", fontSize: "10px", fontFamily: "monospace" }}>
-                  Active near screen edges or in fullscreen
+                  Active near left/right screen edges
                 </span>
               </div>
             </div>
