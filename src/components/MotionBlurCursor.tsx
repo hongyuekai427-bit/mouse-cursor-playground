@@ -31,6 +31,7 @@ export interface CursorConfig {
   showBlob: boolean;
   springStiffness: number;
   ellipseThinning: number;
+  cursorSize: number;
 }
 
 interface MotionBlurCursorProps {
@@ -560,14 +561,15 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       speed: number,
       alpha: number = 1
     ) => {
-      const baseRadius = 3;
-      const ringRadius = 10;
       const config = configRef.current;
+      const cursorSize = config.cursorSize;
+      const baseRadius = 3 * cursorSize;
+      const ringRadius = 10 * cursorSize;
       const multiplier = config.ellipseMultiplier;
       const cursorColor = config.cursorColor;
       const enableStretch = config.enableStretch;
       const borderColor = config.borderColor;
-      const borderWidth = config.borderWidth;
+      const borderWidth = config.borderWidth * cursorSize;
       const clickScale = state.clickScale;
       const showOuterRing = config.showOuterRing;
       const showCircle = config.showCircle;

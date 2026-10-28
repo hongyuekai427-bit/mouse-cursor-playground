@@ -18,6 +18,7 @@ export default function App() {
     showBlob: false,
     springStiffness: 900,
     ellipseThinning: 0.5,
+    cursorSize: 1,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -109,6 +110,14 @@ export default function App() {
               max={4}
               step={0.1}
               onChange={(v) => setConfig({ ...config, ellipseMultiplier: v })}
+            />
+            <SliderRow
+              label="Cursor Size"
+              value={config.cursorSize}
+              min={0.5}
+              max={2}
+              step={0.1}
+              onChange={(v) => setConfig({ ...config, cursorSize: v })}
             />
             <div style={{ marginTop: "16px" }}>
               <div style={{ marginBottom: "8px" }}>
