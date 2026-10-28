@@ -391,8 +391,13 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.oneEuroDx += alpha * (dx - state.oneEuroDx);
         state.oneEuroDy += alpha * (dy - state.oneEuroDy);
         
-        // When pointer stops, snap One Euro position to actual position
-        if (instantSpeed < 0.5) {
+        // Always check if One Euro position needs to catch up to actual position
+        const distanceToActual = Math.sqrt(
+          (state.x - state.oneEuroX) ** 2 + (state.y - state.oneEuroY) ** 2
+        );
+        
+        // When pointer stops or is very close, snap to actual position
+        if (instantSpeed < 0.5 || distanceToActual < 1) {
           state.oneEuroX = state.x;
           state.oneEuroY = state.y;
         }
