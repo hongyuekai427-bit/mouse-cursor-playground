@@ -17,6 +17,7 @@ export default function App() {
     showCircle: true,
     showBlob: false,
     springStiffness: 900,
+    ellipseThinning: 0.5,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -146,6 +147,18 @@ export default function App() {
                     max={2000}
                     step={50}
                     onChange={(v) => setConfig({ ...config, springStiffness: v })}
+                  />
+                </div>
+              )}
+              {config.enableStretch && (
+                <div style={{ marginTop: "12px" }}>
+                  <SliderRow
+                    label="Ellipse Thinning"
+                    value={config.ellipseThinning}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    onChange={(v) => setConfig({ ...config, ellipseThinning: v })}
                   />
                 </div>
               )}
