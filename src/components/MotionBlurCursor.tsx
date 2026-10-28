@@ -619,6 +619,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
           ctx.fill();
+          
+          // Draw blob border
+          if (borderWidth > 0) {
+            ctx.beginPath();
+            ctx.arc(0, 0, ringRadius + borderWidth / 2, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
+          }
+          
           ctx.restore();
         }
 
@@ -666,6 +676,15 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
           ctx.fill();
+          
+          // Draw blob border
+          if (borderWidth > 0) {
+            ctx.beginPath();
+            ctx.arc(x, y, ringRadius + borderWidth / 2, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
+          }
         }
 
         // Draw circle (small dot)
