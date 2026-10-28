@@ -391,6 +391,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.oneEuroDx += alpha * (dx - state.oneEuroDx);
         state.oneEuroDy += alpha * (dy - state.oneEuroDy);
         
+        // When pointer stops, snap One Euro position to actual position
+        if (instantSpeed < 0.5) {
+          state.oneEuroX = state.x;
+          state.oneEuroY = state.y;
+        }
+        
         // Use hidden cursor's speed and direction (instantSpeed and instantAngle)
         drawCursor(ctx, state.oneEuroX, state.oneEuroY, instantAngle, instantSpeed);
       } else if (interpolation === "spring") {
