@@ -196,7 +196,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       if (!state.visible || !state.hasMoved) {
         // If we're fading out, continue animating
         if (state.opacity > 0.01) {
-          state.opacity += (state.targetOpacity - state.opacity) * 0.08;
+          state.opacity += (state.targetOpacity - state.opacity) * 0.15;
           ctx.clearRect(0, 0, w, h);
           drawCursor(ctx, state.x, state.y, 0, 0, state.opacity);
         }
@@ -240,7 +240,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.angle = instantAngle;
 
       // Update opacity (fade in/out)
-      const fadeSpeed = 0.08; // Medium speed for fade
+      const fadeSpeed = 0.15; // Faster speed for fade
       state.opacity += (state.targetOpacity - state.opacity) * fadeSpeed;
       
       // If opacity is very low and target is 0, stop rendering
