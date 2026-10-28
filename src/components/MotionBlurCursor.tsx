@@ -9,7 +9,6 @@ interface TimestampedPos {
 export type InterpolationMethod =
   | "off"
   | "lerp"
-  | "spline"
   | "oneeuro"
   | "spring"
   | "kalman"
@@ -285,60 +284,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         const lerpFactor = 0.35;
         state.renderX += (state.x - state.renderX) * lerpFactor;
         state.renderY += (state.y - state.renderY) * lerpFactor;
-        
-        // Record render position to history
-        const now = performance.now();
-        state.renderHistory.push({ x: state.renderX, y: state.renderY, t: now });
-        if (state.renderHistory.length > 10) state.renderHistory.shift();
-        
-        // Calculate render speed and angle
-        let renderSpeed = 0;
-        let renderAngle = state.angle;
-        if (state.renderHistory.length >= 2) {
-          const last = state.renderHistory[state.renderHistory.length - 2];
-          const newest = state.renderHistory[state.renderHistory.length - 1];
-          const dx = newest.x - last.x;
-          const dy = newest.y - last.y;
-          const dt = newest.t - last.t;
-          if (dt > 0) {
-            renderSpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
-            if (renderSpeed > 0.5) {
-              renderAngle = Math.atan2(dy, dx);
-            }
-          }
-        }
-        
-        drawCursor(ctx, state.renderX, state.renderY, renderAngle, renderSpeed);
-      } else if (interpolation === "spline") {
-        // Spline interpolation using Catmull-Rom
-        if (state.history.length >= 4) {
-          const points = state.history.slice(-4);
-          const t = 0.85; // Near end point for responsiveness
-          const p0 = points[0];
-          const p1 = points[1];
-          const p2 = points[2];
-          const p3 = points[3];
-          
-          // Catmull-Rom spline calculation
-          const t2 = t * t;
-          const t3 = t2 * t;
-          
-          const x = 0.5 * ((2 * p1.x) +
-            (-p0.x + p2.x) * t +
-            (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
-            (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
-          
-          const y = 0.5 * ((2 * p1.y) +
-            (-p0.y + p2.y) * t +
-            (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
-            (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
-          
-          state.renderX = x;
-          state.renderY = y;
-        } else {
-          state.renderX = state.x;
-          state.renderY = state.y;
-        }
         
         // Record render position to history
         const now = performance.now();
