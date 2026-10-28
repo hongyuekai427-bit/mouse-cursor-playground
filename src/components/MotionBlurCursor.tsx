@@ -694,8 +694,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
-    document.documentElement.addEventListener("mouseleave", handlePointerLeave);
-    document.documentElement.addEventListener("mouseenter", handlePointerEnter);
+    window.addEventListener("pointerleave", handlePointerLeave);
+    window.addEventListener("pointerenter", handlePointerEnter);
     window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("visibilitychange", handleVisibilityChange);
@@ -706,8 +706,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     return () => {
       cancelAnimationFrame(animFrameRef.current);
       window.removeEventListener("pointermove", handlePointerMove);
-      document.documentElement.removeEventListener("mouseleave", handlePointerLeave);
-      document.documentElement.removeEventListener("mouseenter", handlePointerEnter);
+      window.removeEventListener("pointerleave", handlePointerLeave);
+      window.removeEventListener("pointerenter", handlePointerEnter);
       window.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("visibilitychange", handleVisibilityChange);
