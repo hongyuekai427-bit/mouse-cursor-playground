@@ -29,6 +29,8 @@ export interface CursorConfig {
   clickSpring: number;
   enableClickAnimation: boolean;
   cursorStyle: CursorStyle;
+  // Spring interpolation responsiveness (0..1): higher = snappier
+  springResponsiveness: number;
 }
 
 interface MotionBlurCursorProps {
@@ -316,9 +318,11 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         
         drawCursor(ctx, state.oneEuroX, state.oneEuroY, state.angle, instantSpeed);
       } else if (interpolation === "spring") {
-        // Critically Damped Spring - More Responsive
+        // Critically Damped Spring - responsiveness adjustable via config
         const dt = 1 / 60; // Fixed timestep
-        const stiffness = 900; // Increased from 180 for faster response
+        // Map responsiveness (0..1) to stiffness: low = lazy, high = snappy
+        const responsiveness = Math.min(1, Math.max(0, config.springResponsiveness));
+        const stiffness = 100 + responsiveness * 1700; // 100..1800
         const damping = 2 * Math.sqrt(stiffness); // Critical damping
         
         // Run multiple sub-steps for stability at high stiffness

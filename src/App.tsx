@@ -14,6 +14,7 @@ export default function App() {
     clickSpring: 0.15,
     enableClickAnimation: true,
     cursorStyle: "ring",
+    springResponsiveness: 0.5,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -167,6 +168,18 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              {config.interpolation === "spring" && (
+                <div style={{ marginTop: "12px" }}>
+                  <SliderRow
+                    label="Spring Responsiveness"
+                    value={config.springResponsiveness}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    onChange={(v) => setConfig({ ...config, springResponsiveness: v })}
+                  />
+                </div>
+              )}
             </div>
             <div style={{ marginTop: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
