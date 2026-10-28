@@ -15,6 +15,8 @@ export type InterpolationMethod =
   | "kalman"
   | "timebased";
 
+export type CursorStyle = "dot" | "ring" | "filled";
+
 export interface CursorConfig {
   ellipseMultiplier: number;
   backgroundColor: string;
@@ -26,6 +28,7 @@ export interface CursorConfig {
   clickShrink: number;
   clickSpring: number;
   enableClickAnimation: boolean;
+  cursorStyle: CursorStyle;
 }
 
 interface MotionBlurCursorProps {
@@ -419,6 +422,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       ctx.scale(clickScale, clickScale);
       ctx.translate(-x, -y);
 
+      const style = config.cursorStyle;
+
       // Stretch based on speed (only if enabled)
       const stretchThreshold = 8;
       const maxStretchSpeed = 40;
@@ -427,53 +432,82 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         const t = Math.min(1, (speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold));
         stretchAmount = 1 + t * 1.5 * multiplier;
       }
-      
+
       // Inner dot stretches at 0.5x the outer ring
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
-      if (stretchAmount > 1.05) {
-        // Draw stretched inner dot (0.5x stretch) along movement direction
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.scale(innerStretchAmount, 1 / Math.sqrt(innerStretchAmount));
-        ctx.beginPath();
-        ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        ctx.fill();
-        ctx.restore();
+      // Style determines which elements are drawn:
+      // - "dot":    small filled inner dot only.
+      // - "ring":   outer ring + border, plus the small inner dot (default look).
+      // - "filled": solid filled circle at the same radius as the outer ring,
+      //             with the same border and the same stretch/rotation behavior.
+      const showInnerDot = style !== "filled";
+      const showOuterRing = style !== "dot";
 
-        // Draw stretched outer ring with border along movement direction
+      // The visible element that stretches along the movement direction:
+      // in "filled" mode it is the big circle, so it uses the full ring stretch;
+      // otherwise the small dot stretches at 0.5x like before.
+      const primaryStretch = style === "filled" ? stretchAmount : innerStretchAmount;
+      const stretched = primaryStretch > 1.05;
+
+      if (stretched) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
-        
-        // Draw border ring (outside face)
-        if (borderWidth > 0) {
+        ctx.scale(primaryStretch, 1 / Math.sqrt(primaryStretch));
+
+        if (style === "filled") {
+          // Filled circle at the outer ring's radius
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          ctx.fill();
+        } else {
+          // Small inner dot
+          if (showInnerDot) {
+            ctx.beginPath();
+            ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            ctx.fill();
+          }
+        }
+
+        // Border ring (outside face) for ring/filled styles
+        if (showOuterRing && borderWidth > 0) {
           ctx.beginPath();
           ctx.arc(0, 0, ringRadius + borderWidth / 2, 0, Math.PI * 2);
           ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
           ctx.lineWidth = borderWidth;
           ctx.stroke();
         }
-        
-        // Draw main outer ring
-        ctx.beginPath();
-        ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+
+        // Main outer ring stroke (only in "ring" style)
+        if (style === "ring") {
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+
         ctx.restore();
       } else {
-        // Draw inner dot at exact cursor position
-        ctx.beginPath();
-        ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        ctx.fill();
+        if (style === "filled") {
+          // Filled circle at exact cursor position, same radius as outer ring
+          ctx.beginPath();
+          ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          ctx.fill();
+        } else if (showInnerDot) {
+          // Draw inner dot at exact cursor position
+          ctx.beginPath();
+          ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          ctx.fill();
+        }
 
-        // Draw border ring (outside face)
-        if (borderWidth > 0) {
+        // Border ring (outside face)
+        if (showOuterRing && borderWidth > 0) {
           ctx.beginPath();
           ctx.arc(x, y, ringRadius + borderWidth / 2, 0, Math.PI * 2);
           ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
@@ -481,14 +515,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           ctx.stroke();
         }
 
-        // Draw outer ring synced with dot
-        ctx.beginPath();
-        ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+        // Outer ring synced with dot (only in "ring" style)
+        if (style === "ring") {
+          ctx.beginPath();
+          ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
       }
-      
+
       ctx.restore();
     };
 
