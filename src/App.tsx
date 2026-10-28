@@ -113,39 +113,6 @@ export default function App() {
             <div style={{ marginTop: "16px" }}>
               <div style={{ marginBottom: "8px" }}>
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
-                  CURSOR STYLE
-                </span>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
-                {([
-                  { value: "dot", label: "DOT" },
-                  { value: "ring", label: "RING" },
-                  { value: "filled", label: "FILLED" },
-                ] as const).map((style) => (
-                  <button
-                    key={style.value}
-                    onClick={() => setConfig({ ...config, cursorStyle: style.value })}
-                    style={{
-                      padding: "8px 6px",
-                      borderRadius: "6px",
-                      backgroundColor: config.cursorStyle === style.value ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                      border: config.cursorStyle === style.value ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
-                      color: config.cursorStyle === style.value ? "#a5b4fc" : "#9ca3af",
-                      fontSize: "10px",
-                      fontFamily: "monospace",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {style.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ marginTop: "16px" }}>
-              <div style={{ marginBottom: "8px" }}>
-                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
                   INTERPOLATION
                 </span>
               </div>

@@ -537,8 +537,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       ctx.scale(clickScale, clickScale);
       ctx.translate(-x, -y);
 
-      const style = config.cursorStyle;
-
       // Stretch based on speed (only if enabled)
       const stretchThreshold = 8;
       const maxStretchSpeed = 40;
