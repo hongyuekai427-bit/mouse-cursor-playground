@@ -26,6 +26,9 @@ export interface CursorConfig {
   clickShrink: number;
   clickSpring: number;
   enableClickAnimation: boolean;
+  showOuterRing: boolean;
+  showInnerRing: boolean;
+  filledCircle: boolean;
 }
 
 interface MotionBlurCursorProps {
@@ -393,6 +396,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     ) => {
       const baseRadius = 3;
       const ringRadius = 10;
+      const innerRingRadius = 6;
       const config = configRef.current;
       const multiplier = config.ellipseMultiplier;
       const cursorColor = config.cursorColor;
@@ -400,6 +404,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const borderColor = config.borderColor;
       const borderWidth = config.borderWidth;
       const clickScale = state.clickScale;
+      const showOuterRing = config.showOuterRing;
+      const showInnerRing = config.showInnerRing;
+      const filledCircle = config.filledCircle;
       
       // Convert hex color to RGB
       const hex = cursorColor.replace('#', '');
@@ -432,61 +439,93 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
       if (stretchAmount > 1.05) {
-        // Draw stretched inner dot (0.5x stretch) along movement direction
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.scale(innerStretchAmount, 1 / Math.sqrt(innerStretchAmount));
-        ctx.beginPath();
-        ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        ctx.fill();
-        ctx.restore();
+        // Draw stretched inner circle (filled or ring)
+        if (filledCircle) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.scale(innerStretchAmount, 1 / Math.sqrt(innerStretchAmount));
+          ctx.beginPath();
+          ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Draw stretched inner ring
+        if (showInnerRing) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.scale(innerStretchAmount, 1 / Math.sqrt(innerStretchAmount));
+          ctx.beginPath();
+          ctx.arc(0, 0, innerRingRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.restore();
+        }
 
         // Draw stretched outer ring with border along movement direction
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
-        
-        // Draw border ring (outside face)
-        if (borderWidth > 0) {
+        if (showOuterRing) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
+          
+          // Draw border ring (outside face)
+          if (borderWidth > 0) {
+            ctx.beginPath();
+            ctx.arc(0, 0, ringRadius + borderWidth / 2, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
+          }
+          
+          // Draw main outer ring
           ctx.beginPath();
-          ctx.arc(0, 0, ringRadius + borderWidth / 2, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
-          ctx.lineWidth = borderWidth;
+          ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
+          ctx.lineWidth = 1.5;
           ctx.stroke();
+          ctx.restore();
         }
-        
-        // Draw main outer ring
-        ctx.beginPath();
-        ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.restore();
       } else {
-        // Draw inner dot at exact cursor position
-        ctx.beginPath();
-        ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        ctx.fill();
-
-        // Draw border ring (outside face)
-        if (borderWidth > 0) {
+        // Draw inner circle (filled or ring)
+        if (filledCircle) {
           ctx.beginPath();
-          ctx.arc(x, y, ringRadius + borderWidth / 2, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
-          ctx.lineWidth = borderWidth;
+          ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          ctx.fill();
+        }
+
+        // Draw inner ring
+        if (showInnerRing) {
+          ctx.beginPath();
+          ctx.arc(x, y, innerRingRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
+          ctx.lineWidth = 1.5;
           ctx.stroke();
         }
 
-        // Draw outer ring synced with dot
-        ctx.beginPath();
-        ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+        // Draw outer ring
+        if (showOuterRing) {
+          // Draw border ring (outside face)
+          if (borderWidth > 0) {
+            ctx.beginPath();
+            ctx.arc(x, y, ringRadius + borderWidth / 2, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha})`;
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
+          }
+
+          // Draw main outer ring
+          ctx.beginPath();
+          ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${0.9 * alpha})`;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
       }
       
       ctx.restore();

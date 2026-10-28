@@ -13,6 +13,9 @@ export default function App() {
     clickShrink: 0.3,
     clickSpring: 0.15,
     enableClickAnimation: true,
+    showOuterRing: true,
+    showInnerRing: false,
+    filledCircle: true,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -251,6 +254,56 @@ export default function App() {
                 />
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE STRETCH</span>
               </label>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>CURSOR STYLE</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={config.filledCircle}
+                    onChange={(e) => setConfig({ ...config, filledCircle: e.target.checked })}
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      cursor: "pointer",
+                      accentColor: "#6366f1",
+                    }}
+                  />
+                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>FILLED CIRCLE</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={config.showInnerRing}
+                    onChange={(e) => setConfig({ ...config, showInnerRing: e.target.checked })}
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      cursor: "pointer",
+                      accentColor: "#6366f1",
+                    }}
+                  />
+                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>INNER RING</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={config.showOuterRing}
+                    onChange={(e) => setConfig({ ...config, showOuterRing: e.target.checked })}
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      cursor: "pointer",
+                      accentColor: "#6366f1",
+                    }}
+                  />
+                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>OUTER RING</span>
+                </label>
+              </div>
             </div>
 
             <div style={{ marginTop: "16px" }}>
