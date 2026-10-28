@@ -93,6 +93,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     // Fade animation state
     opacity: 1,
     targetOpacity: 1,
+    fadeScale: 1,
   });
 
   // Keep config ref in sync
@@ -244,7 +245,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       state.opacity += (state.targetOpacity - state.opacity) * fadeSpeed;
       
       // Scale cursor based on opacity (shrink when fading out, expand when fading in)
-      state.clickScale = state.opacity;
+      state.fadeScale = state.opacity;
       
       // If opacity is very low and target is 0, stop rendering
       if (state.opacity < 0.01 && state.targetOpacity === 0) {
@@ -538,6 +539,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const borderColor = config.borderColor;
       const borderWidth = config.borderWidth;
       const clickScale = state.clickScale;
+      const fadeScale = state.fadeScale;
       const showOuterRing = config.showOuterRing;
       const showCircle = config.showCircle;
       const showBlob = config.showBlob;
@@ -555,10 +557,11 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const bg = parseInt(borderHex.substring(2, 4), 16);
       const bb = parseInt(borderHex.substring(4, 6), 16);
 
-      // Apply click scale
+      // Apply fade scale and click scale
+      const totalScale = fadeScale * clickScale;
       ctx.save();
       ctx.translate(x, y);
-      ctx.scale(clickScale, clickScale);
+      ctx.scale(totalScale, totalScale);
       ctx.translate(-x, -y);
 
       // Stretch based on speed (only if enabled)
