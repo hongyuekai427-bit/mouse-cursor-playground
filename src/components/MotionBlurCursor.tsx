@@ -31,6 +31,7 @@ export interface CursorConfig {
   showBlob: boolean;
   springStiffness: number;
   ellipseThinning: number;
+  enableGooey: boolean;
 }
 
 interface MotionBlurCursorProps {
@@ -47,6 +48,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     x: 0,
     y: 0,
     visible: false,
+    isFullscreen: false,
     hasMoved: false,
     history: [] as TimestampedPos[],
     smoothSpeed: 0,
@@ -182,7 +184,11 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       }
     };
 
-
+    // Fullscreen detection
+    const handleFullscreenChange = () => {
+      state.isFullscreen = !!document.fullscreenElement;
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
 
     const animate = () => {
       const w = window.innerWidth;
@@ -199,6 +205,17 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         drawCursor(ctx, state.x, state.y, 0, 0);
         animFrameRef.current = requestAnimationFrame(animate);
         return;
+      }
+
+      // Check if gooey effect should be applied
+      const currentConfig = configRef.current;
+      const edgeThreshold = 150; // Distance from edge to trigger gooey
+      const nearLeftEdge = state.x < edgeThreshold;
+      const nearRightEdge = state.x > w - edgeThreshold;
+      const shouldApplyGooey = currentConfig.enableGooey && (nearLeftEdge || nearRightEdge || state.isFullscreen);
+      
+      if (shouldApplyGooey) {
+        ctx.filter = "blur(8px) contrast(20)";
       }
 
 
@@ -547,6 +564,11 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed);
       }
 
+      // Reset filter after rendering
+      if (shouldApplyGooey) {
+        ctx.filter = "none";
+      }
+
       animFrameRef.current = requestAnimationFrame(animate);
     };
 
@@ -738,6 +760,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       window.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("resize", resizeCanvas);
       motionQuery.removeEventListener("change", handleMotionChange);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, []);
 
