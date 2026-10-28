@@ -599,9 +599,11 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       }
       
       // Update each trail blob with spring physics
-      const springStrength = 0.08;
-      const damping = 0.85;
-      const baseRadius = 10;
+      const springStrength = 0.12;
+      const damping = 0.8;
+      const baseRadius = 8;
+      const maxSpeed = 12; // Limit maximum velocity
+      const minDistance = 15; // Minimum distance between blobs
       
       for (let i = 0; i < state.trailBlobs.length; i++) {
         const blob = state.trailBlobs[i];
@@ -614,7 +616,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         const dy = target.y - blob.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         
-        // Spring force toward target
+        // Spring force toward target (stronger when farther)
         const forceX = dx * springStrength;
         const forceY = dy * springStrength;
         
@@ -622,9 +624,33 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         blob.vx = (blob.vx + forceX) * damping;
         blob.vy = (blob.vy + forceY) * damping;
         
+        // Limit maximum speed to prevent whip effect
+        const speed = Math.sqrt(blob.vx * blob.vx + blob.vy * blob.vy);
+        if (speed > maxSpeed) {
+          blob.vx = (blob.vx / speed) * maxSpeed;
+          blob.vy = (blob.vy / speed) * maxSpeed;
+        }
+        
         // Update position
         blob.x += blob.vx;
         blob.y += blob.vy;
+        
+        // Ensure minimum distance from previous blob to prevent clustering
+        if (i > 0) {
+          const prevBlob = state.trailBlobs[i - 1];
+          const distFromPrev = Math.sqrt(
+            Math.pow(blob.x - prevBlob.x, 2) + 
+            Math.pow(blob.y - prevBlob.y, 2)
+          );
+          
+          if (distFromPrev < minDistance) {
+            // Push blob away from previous
+            const pushFactor = (minDistance - distFromPrev) * 0.3;
+            const angle = Math.atan2(blob.y - prevBlob.y, blob.x - prevBlob.x);
+            blob.x += Math.cos(angle) * pushFactor;
+            blob.y += Math.sin(angle) * pushFactor;
+          }
+        }
       }
       
       // Apply gooey filter only to trail
