@@ -84,6 +84,13 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     // Click animation state
     clickScale: 1,
     clickVelocity: 0,
+    // Displayed-cursor velocity tracking (px/s), measured from the actual
+    // per-frame movement of the rendered element — not the native cursor.
+    dispVx: 0,
+    dispVy: 0,
+    lastFrameTime: 0,
+    // Track interpolation method changes to re-sync filters on switch
+    lastInterpolation: "" as InterpolationMethod | "",
   });
 
   // Keep config ref in sync
@@ -186,6 +193,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       ctx.clearRect(0, 0, w, h);
 
       if (!state.visible || !state.hasMoved) {
+        state.dispVx = 0;
+        state.dispVy = 0;
+        state.smoothSpeed = 0;
         animFrameRef.current = requestAnimationFrame(animate);
         return;
       }
@@ -198,30 +208,60 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
 
 
-      // Calculate instantaneous speed and direction from last to newest position
-      const history = state.history;
-      let instantSpeed = 0;
-      let instantAngle = state.angle;
-      
-      if (history.length >= 2) {
-        const last = history[history.length - 2];
-        const newest = history[history.length - 1];
-        const dx = newest.x - last.x;
-        const dy = newest.y - last.y;
-        const dt = newest.t - last.t;
-        if (dt > 0) {
-          // Speed in px/frame (at 60fps)
-          instantSpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
-          // Direction of movement
-          if (instantSpeed > 0.5) {
-            instantAngle = Math.atan2(dy, dx);
-          }
+      const config = configRef.current;
+      const interpolation = config.interpolation;
+
+      // Snapshot the displayed (interpolated) position BEFORE this frame's
+      // update, so stretch speed/direction derive from the VISIBLE cursor's
+      // own movement, not the hidden native cursor.
+      const getRenderPos = (): [number, number] => {
+        switch (interpolation) {
+          case "lerp":
+          case "spline":
+            return [state.renderX, state.renderY];
+          case "oneeuro":
+            return [state.oneEuroX, state.oneEuroY];
+          case "spring":
+            return [state.springX, state.springY];
+          case "kalman":
+            return [state.kalmanX, state.kalmanY];
+          case "timebased":
+            return [state.timeBasedX, state.timeBasedY];
+          default: // "off" — drawn at the native position
+            return [state.x, state.y];
         }
+      };
+
+      // If the interpolation method changed since last frame, re-sync every
+      // filter to the CURRENTLY displayed position. Otherwise the old method's
+      // stale coordinates would be used as the previous frame's position and
+      // produce a bogus one-frame velocity spike (e.g., switching from a laggy
+      // spring to lerp would flash a huge stretch).
+      if (state.lastInterpolation !== interpolation) {
+        const [cx, cy] = getRenderPos(); // still pre-update: old method's display pos
+        state.renderX = cx;
+        state.renderY = cy;
+        state.oneEuroX = cx;
+        state.oneEuroY = cy;
+        state.springX = cx;
+        state.springY = cy;
+        state.springVx = 0;
+        state.springVy = 0;
+        state.kalmanX = cx;
+        state.kalmanY = cy;
+        state.kalmanVx = 0;
+        state.kalmanVy = 0;
+        state.timeBasedX = cx;
+        state.timeBasedY = cy;
+        state.predictiveX = cx;
+        state.predictiveY = cy;
+        state.dispVx = 0;
+        state.dispVy = 0;
+        state.smoothSpeed = 0;
+        state.lastInterpolation = interpolation;
       }
 
-      // Use instantaneous speed directly
-      state.smoothSpeed = instantSpeed;
-      state.angle = instantAngle;
+      const [prevRenderX, prevRenderY] = getRenderPos();
 
       // Update click spring animation
       if (state.clickScale < 1) {
@@ -245,18 +285,24 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
       }
 
-      const config = configRef.current;
-      const interpolation = config.interpolation;
+      // Update each interpolation method, then compute the displayed
+      // cursor's actual per-frame velocity (speed + direction). This is what
+      // drives stretching/rotation, so a lagging spring stretches according
+      // to how fast the rendered circle itself is moving.
+      let drawX = state.x;
+      let drawY = state.y;
 
       if (interpolation === "off") {
         // No interpolation - direct position
-        drawCursor(ctx, state.x, state.y, state.angle, instantSpeed);
+        drawX = state.x;
+        drawY = state.y;
       } else if (interpolation === "lerp") {
         // Linear interpolation
         const lerpFactor = 0.35;
         state.renderX += (state.x - state.renderX) * lerpFactor;
         state.renderY += (state.y - state.renderY) * lerpFactor;
-        drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
+        drawX = state.renderX;
+        drawY = state.renderY;
       } else if (interpolation === "spline") {
         // Spline interpolation using Catmull-Rom
         if (state.history.length >= 4) {
@@ -287,7 +333,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           state.renderX = state.x;
           state.renderY = state.y;
         }
-        drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
+        drawX = state.renderX;
+        drawY = state.renderY;
       } else if (interpolation === "oneeuro") {
         // One Euro Filter - adaptive smoothing
         const now = performance.now();
@@ -316,7 +363,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.oneEuroDx += alpha * (dx - state.oneEuroDx);
         state.oneEuroDy += alpha * (dy - state.oneEuroDy);
         
-        drawCursor(ctx, state.oneEuroX, state.oneEuroY, state.angle, instantSpeed);
+        drawX = state.oneEuroX;
+        drawY = state.oneEuroY;
       } else if (interpolation === "spring") {
         // Critically Damped Spring - responsiveness adjustable via config
         const dt = 1 / 60; // Fixed timestep
@@ -343,7 +391,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           state.springY += state.springVy * subDt;
         }
         
-        drawCursor(ctx, state.springX, state.springY, state.angle, instantSpeed);
+        drawX = state.springX;
+        drawY = state.springY;
       } else if (interpolation === "kalman") {
         // Kalman Filter
         const processNoise = 0.1;
@@ -368,7 +417,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.kalmanPx = (1 - kalmanGainX) * predictedPx;
         state.kalmanPy = (1 - kalmanGainY) * predictedPy;
         
-        drawCursor(ctx, state.kalmanX, state.kalmanY, state.angle, instantSpeed);
+        drawX = state.kalmanX;
+        drawY = state.kalmanY;
       } else if (interpolation === "timebased") {
         // Time-Based Exponential Smoothing
         const now = performance.now();
@@ -382,8 +432,36 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.timeBasedX += alpha * (state.x - state.timeBasedX);
         state.timeBasedY += alpha * (state.y - state.timeBasedY);
         
-        drawCursor(ctx, state.timeBasedX, state.timeBasedY, state.angle, instantSpeed);
+        drawX = state.timeBasedX;
+        drawY = state.timeBasedY;
       }
+
+      // Displayed-cursor velocity: measure how fast the VISIBLE element is
+      // actually moving (px/s), from its real per-frame displacement. This
+      // speed/direction drives stretching/rotation — so a lagging filter like
+      // spring stretches according to its own motion, not the native cursor's.
+      const now = performance.now();
+      const frameDt = state.lastFrameTime > 0
+        ? Math.min(0.1, Math.max(0.001, (now - state.lastFrameTime) / 1000))
+        : 1 / 60;
+      state.lastFrameTime = now;
+
+      const rdx = drawX - prevRenderX;
+      const rdy = drawY - prevRenderY;
+      const instVx = rdx / frameDt;
+      const instVy = rdy / frameDt;
+      // Light temporal smoothing to avoid single-frame jitter in direction
+      const velSmooth = 0.5;
+      state.dispVx += velSmooth * (instVx - state.dispVx);
+      state.dispVy += velSmooth * (instVy - state.dispVy);
+
+      const displaySpeed = Math.sqrt(state.dispVx * state.dispVx + state.dispVy * state.dispVy) / 60; // px/frame @60fps
+      if (displaySpeed > 0.5) {
+        state.angle = Math.atan2(state.dispVy, state.dispVx);
+      }
+      state.smoothSpeed = displaySpeed;
+
+      drawCursor(ctx, drawX, drawY, state.angle, displaySpeed);
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
