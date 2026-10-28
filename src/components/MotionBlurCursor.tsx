@@ -605,9 +605,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
       if (stretchAmount > 1.05) {
-        // Calculate short axis based on thinning slider (0.0 = 1.0x diameter, 1.0 = 0.25x diameter)
-        const shortAxis = 1.0 - (1.0 - 0.25) * ellipseThinning;
-        const innerShortAxis = 1.0 - (1.0 - 0.25) * ellipseThinning * 0.5;
+        // Calculate short axis based on speed and thinning slider
+        // Speed factor: 0 at threshold, 1 at max speed
+        const speedFactor = Math.min(1, (speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold));
+        // Short axis: 1.0 (circular) to 0.25 (thin) based on speed and thinning setting
+        const shortAxis = 1.0 - speedFactor * (1.0 - 0.25) * ellipseThinning;
+        const innerShortAxis = 1.0 - speedFactor * (1.0 - 0.25) * ellipseThinning * 0.5;
 
         // Draw stretched blob (filled 10px circle)
         if (showBlob) {
