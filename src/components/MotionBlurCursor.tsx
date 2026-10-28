@@ -53,12 +53,14 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     // Interpolated render position
     renderX: 0,
     renderY: 0,
+    renderHistory: [] as { x: number; y: number; t: number }[],
     // One Euro Filter state
     oneEuroX: 0,
     oneEuroY: 0,
     oneEuroDx: 0,
     oneEuroDy: 0,
     oneEuroLastTime: 0,
+    oneEuroHistory: [] as { x: number; y: number; t: number }[],
     // Spring state
     springX: 0,
     springY: 0,
@@ -77,10 +79,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     kalmanVy: 0,
     kalmanPx: 1,
     kalmanPy: 1,
+    kalmanHistory: [] as { x: number; y: number; t: number }[],
     // Time-based smoothing state
     timeBasedX: 0,
     timeBasedY: 0,
     timeBasedLastTime: 0,
+    timeBasedHistory: [] as { x: number; y: number; t: number }[],
     // Click animation state
     clickScale: 1,
     clickVelocity: 0,
@@ -256,7 +260,30 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         const lerpFactor = 0.35;
         state.renderX += (state.x - state.renderX) * lerpFactor;
         state.renderY += (state.y - state.renderY) * lerpFactor;
-        drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
+        
+        // Record render position to history
+        const now = performance.now();
+        state.renderHistory.push({ x: state.renderX, y: state.renderY, t: now });
+        if (state.renderHistory.length > 10) state.renderHistory.shift();
+        
+        // Calculate render speed and angle
+        let renderSpeed = 0;
+        let renderAngle = state.angle;
+        if (state.renderHistory.length >= 2) {
+          const last = state.renderHistory[state.renderHistory.length - 2];
+          const newest = state.renderHistory[state.renderHistory.length - 1];
+          const dx = newest.x - last.x;
+          const dy = newest.y - last.y;
+          const dt = newest.t - last.t;
+          if (dt > 0) {
+            renderSpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
+            if (renderSpeed > 0.5) {
+              renderAngle = Math.atan2(dy, dx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.renderX, state.renderY, renderAngle, renderSpeed);
       } else if (interpolation === "spline") {
         // Spline interpolation using Catmull-Rom
         if (state.history.length >= 4) {
@@ -287,7 +314,30 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           state.renderX = state.x;
           state.renderY = state.y;
         }
-        drawCursor(ctx, state.renderX, state.renderY, state.angle, instantSpeed);
+        
+        // Record render position to history
+        const now = performance.now();
+        state.renderHistory.push({ x: state.renderX, y: state.renderY, t: now });
+        if (state.renderHistory.length > 10) state.renderHistory.shift();
+        
+        // Calculate render speed and angle
+        let renderSpeed = 0;
+        let renderAngle = state.angle;
+        if (state.renderHistory.length >= 2) {
+          const last = state.renderHistory[state.renderHistory.length - 2];
+          const newest = state.renderHistory[state.renderHistory.length - 1];
+          const dx = newest.x - last.x;
+          const dy = newest.y - last.y;
+          const dt = newest.t - last.t;
+          if (dt > 0) {
+            renderSpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
+            if (renderSpeed > 0.5) {
+              renderAngle = Math.atan2(dy, dx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.renderX, state.renderY, renderAngle, renderSpeed);
       } else if (interpolation === "oneeuro") {
         // One Euro Filter - adaptive smoothing
         const now = performance.now();
@@ -316,7 +366,28 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.oneEuroDx += alpha * (dx - state.oneEuroDx);
         state.oneEuroDy += alpha * (dy - state.oneEuroDy);
         
-        drawCursor(ctx, state.oneEuroX, state.oneEuroY, state.angle, instantSpeed);
+        // Record position to history
+        state.oneEuroHistory.push({ x: state.oneEuroX, y: state.oneEuroY, t: now });
+        if (state.oneEuroHistory.length > 10) state.oneEuroHistory.shift();
+        
+        // Calculate speed and angle from history
+        let filterSpeed = 0;
+        let filterAngle = state.angle;
+        if (state.oneEuroHistory.length >= 2) {
+          const last = state.oneEuroHistory[state.oneEuroHistory.length - 2];
+          const newest = state.oneEuroHistory[state.oneEuroHistory.length - 1];
+          const hdx = newest.x - last.x;
+          const hdy = newest.y - last.y;
+          const hdt = newest.t - last.t;
+          if (hdt > 0) {
+            filterSpeed = (Math.sqrt(hdx * hdx + hdy * hdy) / hdt) * 16.67;
+            if (filterSpeed > 0.5) {
+              filterAngle = Math.atan2(hdy, hdx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.oneEuroX, state.oneEuroY, filterAngle, filterSpeed);
       } else if (interpolation === "spring") {
         // Critically Damped Spring - More Responsive
         const dt = 1 / 60; // Fixed timestep
@@ -393,7 +464,29 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.kalmanPx = (1 - kalmanGainX) * predictedPx;
         state.kalmanPy = (1 - kalmanGainY) * predictedPy;
         
-        drawCursor(ctx, state.kalmanX, state.kalmanY, state.angle, instantSpeed);
+        // Record position to history
+        const now = performance.now();
+        state.kalmanHistory.push({ x: state.kalmanX, y: state.kalmanY, t: now });
+        if (state.kalmanHistory.length > 10) state.kalmanHistory.shift();
+        
+        // Calculate speed and angle from history
+        let filterSpeed = 0;
+        let filterAngle = state.angle;
+        if (state.kalmanHistory.length >= 2) {
+          const last = state.kalmanHistory[state.kalmanHistory.length - 2];
+          const newest = state.kalmanHistory[state.kalmanHistory.length - 1];
+          const hdx = newest.x - last.x;
+          const hdy = newest.y - last.y;
+          const hdt = newest.t - last.t;
+          if (hdt > 0) {
+            filterSpeed = (Math.sqrt(hdx * hdx + hdy * hdy) / hdt) * 16.67;
+            if (filterSpeed > 0.5) {
+              filterAngle = Math.atan2(hdy, hdx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.kalmanX, state.kalmanY, filterAngle, filterSpeed);
       } else if (interpolation === "timebased") {
         // Time-Based Exponential Smoothing
         const now = performance.now();
@@ -407,7 +500,28 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.timeBasedX += alpha * (state.x - state.timeBasedX);
         state.timeBasedY += alpha * (state.y - state.timeBasedY);
         
-        drawCursor(ctx, state.timeBasedX, state.timeBasedY, state.angle, instantSpeed);
+        // Record position to history
+        state.timeBasedHistory.push({ x: state.timeBasedX, y: state.timeBasedY, t: now });
+        if (state.timeBasedHistory.length > 10) state.timeBasedHistory.shift();
+        
+        // Calculate speed and angle from history
+        let filterSpeed = 0;
+        let filterAngle = state.angle;
+        if (state.timeBasedHistory.length >= 2) {
+          const last = state.timeBasedHistory[state.timeBasedHistory.length - 2];
+          const newest = state.timeBasedHistory[state.timeBasedHistory.length - 1];
+          const hdx = newest.x - last.x;
+          const hdy = newest.y - last.y;
+          const hdt = newest.t - last.t;
+          if (hdt > 0) {
+            filterSpeed = (Math.sqrt(hdx * hdx + hdy * hdy) / hdt) * 16.67;
+            if (filterSpeed > 0.5) {
+              filterAngle = Math.atan2(hdy, hdx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed);
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
