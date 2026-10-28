@@ -18,7 +18,7 @@ export default function App() {
     showBlob: false,
     springStiffness: 900,
     ellipseThinning: 0.5,
-    cursorSize: 1,
+    cursorSize: 10,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -114,10 +114,11 @@ export default function App() {
             <SliderRow
               label="Cursor Size"
               value={config.cursorSize}
-              min={0.5}
-              max={2}
-              step={0.1}
+              min={5}
+              max={30}
+              step={1}
               onChange={(v) => setConfig({ ...config, cursorSize: v })}
+              unit="px"
             />
             <div style={{ marginTop: "16px" }}>
               <div style={{ marginBottom: "8px" }}>
@@ -454,6 +455,7 @@ function SliderRow({
   max,
   step,
   onChange,
+  unit = "x",
 }: {
   label: string;
   value: number;
@@ -461,6 +463,7 @@ function SliderRow({
   max: number;
   step: number;
   onChange: (v: number) => void;
+  unit?: string;
 }) {
   return (
     <div style={{ marginBottom: "14px" }}>
@@ -468,7 +471,9 @@ function SliderRow({
         <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
           {label.toUpperCase()}
         </span>
-        <span style={{ color: "#6366f1", fontSize: "11px", fontFamily: "monospace" }}>{value.toFixed(1)}x</span>
+        <span style={{ color: "#6366f1", fontSize: "11px", fontFamily: "monospace" }}>
+          {unit === "px" ? `${Math.round(value)}px` : `${value.toFixed(1)}${unit}`}
+        </span>
       </div>
       <input
         type="range"

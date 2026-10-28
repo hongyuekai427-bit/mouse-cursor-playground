@@ -563,13 +563,13 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     ) => {
       const config = configRef.current;
       const cursorSize = config.cursorSize;
-      const baseRadius = 3 * cursorSize;
-      const ringRadius = 10 * cursorSize;
+      const ringRadius = cursorSize;
+      const baseRadius = cursorSize * 0.3;
       const multiplier = config.ellipseMultiplier;
       const cursorColor = config.cursorColor;
       const enableStretch = config.enableStretch;
       const borderColor = config.borderColor;
-      const borderWidth = config.borderWidth * cursorSize;
+      const borderWidth = config.borderWidth;
       const clickScale = state.clickScale;
       const showOuterRing = config.showOuterRing;
       const showCircle = config.showCircle;
