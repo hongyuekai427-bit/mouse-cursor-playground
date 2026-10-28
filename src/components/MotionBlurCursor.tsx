@@ -29,6 +29,7 @@ export interface CursorConfig {
   showOuterRing: boolean;
   showCircle: boolean;
   showBlob: boolean;
+  springStiffness: number;
 }
 
 interface MotionBlurCursorProps {
@@ -318,7 +319,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       } else if (interpolation === "spring") {
         // Critically Damped Spring - More Responsive
         const dt = 1 / 60; // Fixed timestep
-        const stiffness = 900; // Increased from 180 for faster response
+        const stiffness = config.springStiffness;
         const damping = 2 * Math.sqrt(stiffness); // Critical damping
         
         // Run multiple sub-steps for stability at high stiffness

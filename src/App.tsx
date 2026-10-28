@@ -16,6 +16,7 @@ export default function App() {
     showOuterRing: true,
     showCircle: true,
     showBlob: false,
+    springStiffness: 900,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -136,6 +137,18 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              {config.interpolation === "spring" && (
+                <div style={{ marginTop: "12px" }}>
+                  <SliderRow
+                    label="Spring Stiffness"
+                    value={config.springStiffness}
+                    min={100}
+                    max={2000}
+                    step={50}
+                    onChange={(v) => setConfig({ ...config, springStiffness: v })}
+                  />
+                </div>
+              )}
             </div>
             <div style={{ marginTop: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
