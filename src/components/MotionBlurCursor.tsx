@@ -254,7 +254,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
       if (interpolation === "off") {
         // No interpolation - direct position
-        drawCursor(ctx, state.x, state.y, state.angle, instantSpeed);
+        // Reset angle when velocity is 0 to return to original state
+        const displayAngle = instantSpeed > 0.5 ? state.angle : 0;
+        drawCursor(ctx, state.x, state.y, displayAngle, instantSpeed);
       } else if (interpolation === "lerp") {
         // Linear interpolation
         const lerpFactor = 0.35;
