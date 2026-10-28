@@ -34,8 +34,6 @@ export interface CursorConfig {
   ellipseThinning: number;
   showHiddenCursor: boolean;
   enableGooeyTrail: boolean;
-  trailLength: number;
-  trailBlobCount: number;
 }
 
 interface MotionBlurCursorProps {
@@ -600,7 +598,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       container.appendChild(cursorBlob);
       
       // Create trail nodes
-      const nodeCount = configRef.current.trailBlobCount;
+      const nodeCount = 8;
       for (let i = 0; i < nodeCount; i++) {
         const node = document.createElement('div');
         const progress = (i + 1) / (nodeCount + 1);

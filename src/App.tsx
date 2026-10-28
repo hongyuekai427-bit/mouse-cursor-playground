@@ -20,8 +20,6 @@ export default function App() {
     ellipseThinning: 0.5,
     showHiddenCursor: false,
     enableGooeyTrail: false,
-    trailLength: 0.75,
-    trailBlobCount: 8,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -393,27 +391,6 @@ export default function App() {
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE GOOEY TRAIL</span>
               </label>
             </div>
-
-            {config.enableGooeyTrail && (
-              <>
-                <SliderRow
-                  label="Trail Length"
-                  value={config.trailLength}
-                  min={0.3}
-                  max={1.5}
-                  step={0.05}
-                  onChange={(v) => setConfig({ ...config, trailLength: v })}
-                />
-                <SliderRow
-                  label="Trail Blob Count"
-                  value={config.trailBlobCount}
-                  min={3}
-                  max={15}
-                  step={1}
-                  onChange={(v) => setConfig({ ...config, trailBlobCount: v })}
-                />
-              </>
-            )}
 
             <div style={{ marginTop: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
