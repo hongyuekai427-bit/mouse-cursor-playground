@@ -90,6 +90,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     // Click animation state
     clickScale: 1,
     clickVelocity: 0,
+    // Fade animation state
+    opacity: 1,
+    targetOpacity: 1,
   });
 
   // Keep config ref in sync
@@ -157,12 +160,13 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     };
 
     const handlePointerLeave = () => {
-      state.visible = false;
+      state.targetOpacity = 0;
       state.smoothSpeed = 0;
     };
 
     const handlePointerEnter = () => {
       state.visible = true;
+      state.targetOpacity = 1;
     };
 
     const handleMouseDown = () => {
@@ -190,12 +194,18 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       ctx.clearRect(0, 0, w, h);
 
       if (!state.visible || !state.hasMoved) {
+        // If we're fading out, continue animating
+        if (state.opacity > 0.01) {
+          state.opacity += (state.targetOpacity - state.opacity) * 0.08;
+          ctx.clearRect(0, 0, w, h);
+          drawCursor(ctx, state.x, state.y, 0, 0, state.opacity);
+        }
         animFrameRef.current = requestAnimationFrame(animate);
         return;
       }
 
       if (reducedMotionRef.current) {
-        drawCursor(ctx, state.x, state.y, 0, 0);
+        drawCursor(ctx, state.x, state.y, 0, 0, state.opacity);
         animFrameRef.current = requestAnimationFrame(animate);
         return;
       }
@@ -228,6 +238,17 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       // Use instantaneous speed directly
       state.smoothSpeed = instantSpeed;
       state.angle = instantAngle;
+
+      // Update opacity (fade in/out)
+      const fadeSpeed = 0.08; // Medium speed for fade
+      state.opacity += (state.targetOpacity - state.opacity) * fadeSpeed;
+      
+      // If opacity is very low and target is 0, stop rendering
+      if (state.opacity < 0.01 && state.targetOpacity === 0) {
+        state.visible = false;
+        animFrameRef.current = requestAnimationFrame(animate);
+        return;
+      }
 
       // Update click spring animation
       if (state.clickScale < 1) {
@@ -278,7 +299,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           }
         }
         
-        drawCursor(ctx, state.x, state.y, displayAngle, displaySpeed);
+        drawCursor(ctx, state.x, state.y, displayAngle, displaySpeed, state.opacity);
       } else if (interpolation === "lerp") {
         // Linear interpolation
         const lerpFactor = 0.35;
@@ -307,7 +328,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           }
         }
         
-        drawCursor(ctx, state.renderX, state.renderY, renderAngle, renderSpeed);
+        drawCursor(ctx, state.renderX, state.renderY, renderAngle, renderSpeed, state.opacity);
       } else if (interpolation === "oneeuro") {
         // One Euro Filter - adaptive smoothing
         const now = performance.now();
@@ -355,7 +376,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         // Use hidden cursor's speed and direction (instantSpeed and instantAngle)
         // If pointer stopped, use 0 speed
         const displaySpeed = pointerStopped ? 0 : instantSpeed;
-        drawCursor(ctx, state.oneEuroX, state.oneEuroY, instantAngle, displaySpeed);
+        drawCursor(ctx, state.oneEuroX, state.oneEuroY, instantAngle, displaySpeed, state.opacity);
       } else if (interpolation === "spring") {
         // Critically Damped Spring - responsiveness adjustable via config
         const dt = 1 / 60; // Fixed timestep
@@ -407,7 +428,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           }
         }
         
-        drawCursor(ctx, state.springX, state.springY, springAngle, springSpeed);
+        drawCursor(ctx, state.springX, state.springY, springAngle, springSpeed, state.opacity);
       } else if (interpolation === "kalman") {
         // Kalman Filter
         const processNoise = 0.1;
@@ -454,7 +475,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           }
         }
         
-        drawCursor(ctx, state.kalmanX, state.kalmanY, filterAngle, filterSpeed);
+        drawCursor(ctx, state.kalmanX, state.kalmanY, filterAngle, filterSpeed, state.opacity);
       } else if (interpolation === "timebased") {
         // Time-Based Exponential Smoothing
         const now = performance.now();
@@ -489,7 +510,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           }
         }
         
-        drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed);
+        drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed, state.opacity);
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
