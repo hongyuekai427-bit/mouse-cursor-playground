@@ -293,12 +293,11 @@ export default function App() {
                     checked={config.showBlob}
                     onChange={(e) => {
                       const newShowBlob = e.target.checked;
+                      // If this is the only checked one and user tries to uncheck it, keep it checked
                       if (!newShowBlob && !config.showCircle && !config.showOuterRing) {
-                        // This is the last checked one, auto-check the last unchecked one
-                        setConfig({ ...config, showBlob: true, showOuterRing: true });
-                      } else {
-                        setConfig({ ...config, showBlob: newShowBlob });
+                        return; // Don't change anything
                       }
+                      setConfig({ ...config, showBlob: newShowBlob });
                     }}
                     style={{
                       width: "16px",
@@ -315,12 +314,11 @@ export default function App() {
                     checked={config.showCircle}
                     onChange={(e) => {
                       const newShowCircle = e.target.checked;
+                      // If this is the only checked one and user tries to uncheck it, keep it checked
                       if (!newShowCircle && !config.showBlob && !config.showOuterRing) {
-                        // This is the last checked one, auto-check the last unchecked one
-                        setConfig({ ...config, showCircle: true, showOuterRing: true });
-                      } else {
-                        setConfig({ ...config, showCircle: newShowCircle });
+                        return; // Don't change anything
                       }
+                      setConfig({ ...config, showCircle: newShowCircle });
                     }}
                     style={{
                       width: "16px",
@@ -337,12 +335,11 @@ export default function App() {
                     checked={config.showOuterRing}
                     onChange={(e) => {
                       const newShowOuterRing = e.target.checked;
+                      // If this is the only checked one and user tries to uncheck it, keep it checked
                       if (!newShowOuterRing && !config.showBlob && !config.showCircle) {
-                        // This is the last checked one, auto-check the last unchecked one
-                        setConfig({ ...config, showOuterRing: true, showCircle: true });
-                      } else {
-                        setConfig({ ...config, showOuterRing: newShowOuterRing });
+                        return; // Don't change anything
                       }
+                      setConfig({ ...config, showOuterRing: newShowOuterRing });
                     }}
                     style={{
                       width: "16px",
