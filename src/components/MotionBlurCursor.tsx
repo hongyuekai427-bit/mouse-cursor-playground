@@ -610,7 +610,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(angle);
-          ctx.scale(stretchAmount, 1 - (stretchAmount - 1) * ellipseThinning);
+          ctx.scale(stretchAmount, stretchAmount - (stretchAmount - 1) * ellipseThinning);
           ctx.beginPath();
           ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
@@ -623,7 +623,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(angle);
-          ctx.scale(innerStretchAmount, 1 - (innerStretchAmount - 1) * ellipseThinning);
+          ctx.scale(innerStretchAmount, innerStretchAmount - (innerStretchAmount - 1) * ellipseThinning);
           ctx.beginPath();
           ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
@@ -636,7 +636,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(angle);
-          ctx.scale(stretchAmount, 1 - (stretchAmount - 1) * ellipseThinning);
+          ctx.scale(stretchAmount, stretchAmount - (stretchAmount - 1) * ellipseThinning);
           
           // Draw border ring (outside face)
           if (borderWidth > 0) {
