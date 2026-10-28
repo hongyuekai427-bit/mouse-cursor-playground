@@ -18,6 +18,7 @@ export default function App() {
     showBlob: false,
     springStiffness: 900,
     ellipseThinning: 0.5,
+    showHiddenCursor: false,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -351,6 +352,23 @@ export default function App() {
                   <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>OUTER RING</span>
                 </label>
               </div>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={config.showHiddenCursor}
+                  onChange={(e) => setConfig({ ...config, showHiddenCursor: e.target.checked })}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    cursor: "pointer",
+                    accentColor: "#6366f1",
+                  }}
+                />
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>SHOW HIDDEN CURSOR</span>
+              </label>
             </div>
 
             <div style={{ marginTop: "16px" }}>

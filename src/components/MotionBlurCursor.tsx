@@ -32,6 +32,7 @@ export interface CursorConfig {
   showBlob: boolean;
   springStiffness: number;
   ellipseThinning: number;
+  showHiddenCursor: boolean;
 }
 
 interface MotionBlurCursorProps {
@@ -515,6 +516,31 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
         
         drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed, state.opacity);
+      }
+
+      // Draw hidden cursor if enabled
+      if (config.showHiddenCursor) {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        
+        // Draw a small cross to mark the hidden cursor position
+        const crossSize = 5;
+        ctx.strokeStyle = "#ff0000";
+        ctx.lineWidth = 2;
+        
+        // Horizontal line
+        ctx.beginPath();
+        ctx.moveTo(state.x - crossSize, state.y);
+        ctx.lineTo(state.x + crossSize, state.y);
+        ctx.stroke();
+        
+        // Vertical line
+        ctx.beginPath();
+        ctx.moveTo(state.x, state.y - crossSize);
+        ctx.lineTo(state.x, state.y + crossSize);
+        ctx.stroke();
+        
+        ctx.restore();
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
