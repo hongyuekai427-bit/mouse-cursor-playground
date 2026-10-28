@@ -113,44 +113,11 @@ export default function App() {
             <div style={{ marginTop: "16px" }}>
               <div style={{ marginBottom: "8px" }}>
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
-                  CURSOR STYLE
-                </span>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
-                {([
-                  { value: "dot", label: "DOT" },
-                  { value: "ring", label: "RING" },
-                  { value: "filled", label: "FILLED" },
-                ] as const).map((style) => (
-                  <button
-                    key={style.value}
-                    onClick={() => setConfig({ ...config, cursorStyle: style.value })}
-                    style={{
-                      padding: "8px 6px",
-                      borderRadius: "6px",
-                      backgroundColor: config.cursorStyle === style.value ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                      border: config.cursorStyle === style.value ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
-                      color: config.cursorStyle === style.value ? "#a5b4fc" : "#9ca3af",
-                      fontSize: "10px",
-                      fontFamily: "monospace",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {style.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ marginTop: "16px" }}>
-              <div style={{ marginBottom: "8px" }}>
-                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace", letterSpacing: "0.05em" }}>
                   INTERPOLATION
                 </span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
-                {(["off", "lerp", "spline", "oneeuro", "spring", "kalman", "timebased"] as const).map((method) => (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+                {(["off", "lerp", "oneeuro", "spring", "kalman", "timebased"] as const).map((method) => (
                   <button
                     key={method}
                     onClick={() => setConfig({ ...config, interpolation: method })}
@@ -324,7 +291,14 @@ export default function App() {
                   <input
                     type="checkbox"
                     checked={config.showBlob}
-                    onChange={(e) => setConfig({ ...config, showBlob: e.target.checked })}
+                    onChange={(e) => {
+                      const newShowBlob = e.target.checked;
+                      // If this is the only checked one and user tries to uncheck it, keep it checked
+                      if (!newShowBlob && !config.showCircle && !config.showOuterRing) {
+                        return; // Don't change anything
+                      }
+                      setConfig({ ...config, showBlob: newShowBlob });
+                    }}
                     style={{
                       width: "16px",
                       height: "16px",
@@ -338,7 +312,14 @@ export default function App() {
                   <input
                     type="checkbox"
                     checked={config.showCircle}
-                    onChange={(e) => setConfig({ ...config, showCircle: e.target.checked })}
+                    onChange={(e) => {
+                      const newShowCircle = e.target.checked;
+                      // If this is the only checked one and user tries to uncheck it, keep it checked
+                      if (!newShowCircle && !config.showBlob && !config.showOuterRing) {
+                        return; // Don't change anything
+                      }
+                      setConfig({ ...config, showCircle: newShowCircle });
+                    }}
                     style={{
                       width: "16px",
                       height: "16px",
@@ -352,7 +333,14 @@ export default function App() {
                   <input
                     type="checkbox"
                     checked={config.showOuterRing}
-                    onChange={(e) => setConfig({ ...config, showOuterRing: e.target.checked })}
+                    onChange={(e) => {
+                      const newShowOuterRing = e.target.checked;
+                      // If this is the only checked one and user tries to uncheck it, keep it checked
+                      if (!newShowOuterRing && !config.showBlob && !config.showCircle) {
+                        return; // Don't change anything
+                      }
+                      setConfig({ ...config, showOuterRing: newShowOuterRing });
+                    }}
                     style={{
                       width: "16px",
                       height: "16px",

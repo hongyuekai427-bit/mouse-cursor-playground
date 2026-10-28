@@ -9,7 +9,6 @@ interface TimestampedPos {
 export type InterpolationMethod =
   | "off"
   | "lerp"
-  | "spline"
   | "oneeuro"
   | "spring"
   | "kalman"
@@ -91,6 +90,10 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     // Click animation state
     clickScale: 1,
     clickVelocity: 0,
+    // Fade animation state
+    opacity: 1,
+    targetOpacity: 1,
+    fadeScale: 1,
   });
 
   // Keep config ref in sync
@@ -158,12 +161,13 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     };
 
     const handlePointerLeave = () => {
-      state.visible = false;
+      state.targetOpacity = 0;
       state.smoothSpeed = 0;
     };
 
     const handlePointerEnter = () => {
       state.visible = true;
+      state.targetOpacity = 1;
     };
 
     const handleMouseDown = () => {
@@ -191,12 +195,18 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       ctx.clearRect(0, 0, w, h);
 
       if (!state.visible || !state.hasMoved) {
+        // If we're fading out, continue animating
+        if (state.opacity > 0.01) {
+          state.opacity += (state.targetOpacity - state.opacity) * 0.15;
+          ctx.clearRect(0, 0, w, h);
+          drawCursor(ctx, state.x, state.y, 0, 0, state.opacity);
+        }
         animFrameRef.current = requestAnimationFrame(animate);
         return;
       }
 
       if (reducedMotionRef.current) {
-        drawCursor(ctx, state.x, state.y, 0, 0);
+        drawCursor(ctx, state.x, state.y, 0, 0, state.opacity);
         animFrameRef.current = requestAnimationFrame(animate);
         return;
       }
@@ -229,6 +239,20 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       // Use instantaneous speed directly
       state.smoothSpeed = instantSpeed;
       state.angle = instantAngle;
+
+      // Update opacity (fade in/out)
+      const fadeSpeed = 0.15; // Faster speed for fade
+      state.opacity += (state.targetOpacity - state.opacity) * fadeSpeed;
+      
+      // Scale cursor based on opacity (shrink when fading out, expand when fading in)
+      state.fadeScale = state.opacity;
+      
+      // If opacity is very low and target is 0, stop rendering
+      if (state.opacity < 0.01 && state.targetOpacity === 0) {
+        state.visible = false;
+        animFrameRef.current = requestAnimationFrame(animate);
+        return;
+      }
 
       // Update click spring animation
       if (state.clickScale < 1) {
@@ -279,7 +303,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           }
         }
         
-        drawCursor(ctx, state.x, state.y, displayAngle, displaySpeed);
+        drawCursor(ctx, state.x, state.y, displayAngle, displaySpeed, state.opacity);
       } else if (interpolation === "lerp") {
         // Linear interpolation
         const lerpFactor = 0.35;
@@ -308,61 +332,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           }
         }
         
-        drawCursor(ctx, state.renderX, state.renderY, renderAngle, renderSpeed);
-      } else if (interpolation === "spline") {
-        // Spline interpolation using Catmull-Rom
-        if (state.history.length >= 4) {
-          const points = state.history.slice(-4);
-          const t = 0.85; // Near end point for responsiveness
-          const p0 = points[0];
-          const p1 = points[1];
-          const p2 = points[2];
-          const p3 = points[3];
-          
-          // Catmull-Rom spline calculation
-          const t2 = t * t;
-          const t3 = t2 * t;
-          
-          const x = 0.5 * ((2 * p1.x) +
-            (-p0.x + p2.x) * t +
-            (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
-            (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
-          
-          const y = 0.5 * ((2 * p1.y) +
-            (-p0.y + p2.y) * t +
-            (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
-            (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
-          
-          state.renderX = x;
-          state.renderY = y;
-        } else {
-          state.renderX = state.x;
-          state.renderY = state.y;
-        }
-        
-        // Record render position to history
-        const now = performance.now();
-        state.renderHistory.push({ x: state.renderX, y: state.renderY, t: now });
-        if (state.renderHistory.length > 10) state.renderHistory.shift();
-        
-        // Calculate render speed and angle
-        let renderSpeed = 0;
-        let renderAngle = state.angle;
-        if (state.renderHistory.length >= 2) {
-          const last = state.renderHistory[state.renderHistory.length - 2];
-          const newest = state.renderHistory[state.renderHistory.length - 1];
-          const dx = newest.x - last.x;
-          const dy = newest.y - last.y;
-          const dt = newest.t - last.t;
-          if (dt > 0) {
-            renderSpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
-            if (renderSpeed > 0.5) {
-              renderAngle = Math.atan2(dy, dx);
-            }
-          }
-        }
-        
-        drawCursor(ctx, state.renderX, state.renderY, renderAngle, renderSpeed);
+        drawCursor(ctx, state.renderX, state.renderY, renderAngle, renderSpeed, state.opacity);
       } else if (interpolation === "oneeuro") {
         // One Euro Filter - adaptive smoothing
         const now = performance.now();
@@ -391,28 +361,26 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.oneEuroDx += alpha * (dx - state.oneEuroDx);
         state.oneEuroDy += alpha * (dy - state.oneEuroDy);
         
-        // Record position to history
-        state.oneEuroHistory.push({ x: state.oneEuroX, y: state.oneEuroY, t: now });
-        if (state.oneEuroHistory.length > 10) state.oneEuroHistory.shift();
+        // Check if pointer has stopped moving (based on time since last update)
+        const lastHistoryPoint = history.length > 0 ? history[history.length - 1] : null;
+        const timeSinceLastMove = lastHistoryPoint ? now - lastHistoryPoint.t : 0;
+        const pointerStopped = timeSinceLastMove > 50; // 50ms threshold
         
-        // Calculate speed and angle from history
-        let filterSpeed = 0;
-        let filterAngle = state.angle;
-        if (state.oneEuroHistory.length >= 2) {
-          const last = state.oneEuroHistory[state.oneEuroHistory.length - 2];
-          const newest = state.oneEuroHistory[state.oneEuroHistory.length - 1];
-          const hdx = newest.x - last.x;
-          const hdy = newest.y - last.y;
-          const hdt = newest.t - last.t;
-          if (hdt > 0) {
-            filterSpeed = (Math.sqrt(hdx * hdx + hdy * hdy) / hdt) * 16.67;
-            if (filterSpeed > 0.5) {
-              filterAngle = Math.atan2(hdy, hdx);
-            }
-          }
+        // Always check if One Euro position needs to catch up to actual position
+        const distanceToActual = Math.sqrt(
+          (state.x - state.oneEuroX) ** 2 + (state.y - state.oneEuroY) ** 2
+        );
+        
+        // When pointer stops or is very close, snap to actual position
+        if (pointerStopped || instantSpeed < 0.5 || distanceToActual < 1) {
+          state.oneEuroX = state.x;
+          state.oneEuroY = state.y;
         }
         
-        drawCursor(ctx, state.oneEuroX, state.oneEuroY, filterAngle, filterSpeed);
+        // Use hidden cursor's speed and direction (instantSpeed and instantAngle)
+        // If pointer stopped, use 0 speed
+        const displaySpeed = pointerStopped ? 0 : instantSpeed;
+        drawCursor(ctx, state.oneEuroX, state.oneEuroY, instantAngle, displaySpeed, state.opacity);
       } else if (interpolation === "spring") {
         // Critically Damped Spring - responsiveness adjustable via config
         const dt = 1 / 60; // Fixed timestep
@@ -464,7 +432,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           }
         }
         
-        drawCursor(ctx, state.springX, state.springY, springAngle, springSpeed);
+        drawCursor(ctx, state.springX, state.springY, springAngle, springSpeed, state.opacity);
       } else if (interpolation === "kalman") {
         // Kalman Filter
         const processNoise = 0.1;
@@ -511,7 +479,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           }
         }
         
-        drawCursor(ctx, state.kalmanX, state.kalmanY, filterAngle, filterSpeed);
+        drawCursor(ctx, state.kalmanX, state.kalmanY, filterAngle, filterSpeed, state.opacity);
       } else if (interpolation === "timebased") {
         // Time-Based Exponential Smoothing
         const now = performance.now();
@@ -546,7 +514,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           }
         }
         
-        drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed);
+        drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed, state.opacity);
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
@@ -562,15 +530,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       speed: number,
       alpha: number = 1
     ) => {
+      const config = configRef.current;
       const baseRadius = 3;
       const ringRadius = 10;
-      const config = configRef.current;
       const multiplier = config.ellipseMultiplier;
       const cursorColor = config.cursorColor;
       const enableStretch = config.enableStretch;
       const borderColor = config.borderColor;
       const borderWidth = config.borderWidth;
       const clickScale = state.clickScale;
+      const fadeScale = state.fadeScale;
       const showOuterRing = config.showOuterRing;
       const showCircle = config.showCircle;
       const showBlob = config.showBlob;
@@ -588,13 +557,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const bg = parseInt(borderHex.substring(2, 4), 16);
       const bb = parseInt(borderHex.substring(4, 6), 16);
 
-      // Apply click scale
+      // Apply fade scale and click scale
+      const totalScale = fadeScale * clickScale;
       ctx.save();
       ctx.translate(x, y);
-      ctx.scale(clickScale, clickScale);
+      ctx.scale(totalScale, totalScale);
       ctx.translate(-x, -y);
-
-      const style = config.cursorStyle;
 
       // Stretch based on speed (only if enabled)
       const stretchThreshold = 8;
@@ -609,9 +577,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
       if (stretchAmount > 1.05) {
-        // Calculate short axis based on thinning slider (0.0 = 1.0x diameter, 1.0 = 0.25x diameter)
-        const shortAxis = 1.0 - (1.0 - 0.25) * ellipseThinning;
-        const innerShortAxis = 1.0 - (1.0 - 0.25) * ellipseThinning * 0.5;
+        // Calculate short axis based on speed and thinning slider
+        // Speed factor: 0 at threshold, 1 at max speed
+        const speedFactor = Math.min(1, (speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold));
+        // Short axis: 1.0 (circular) to 0.25 (thin) based on speed and thinning setting
+        const shortAxis = 1.0 - speedFactor * (1.0 - 0.25) * ellipseThinning;
+        const innerShortAxis = 1.0 - speedFactor * (1.0 - 0.25) * ellipseThinning * 0.5;
 
         // Draw stretched blob (filled 10px circle)
         if (showBlob) {
