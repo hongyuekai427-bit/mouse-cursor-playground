@@ -605,12 +605,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
       if (stretchAmount > 1.05) {
+        // Calculate short axis based on thinning slider (0.0 = 1.0x diameter, 1.0 = 0.25x diameter)
+        const shortAxis = 1.0 - (1.0 - 0.25) * ellipseThinning;
+        const innerShortAxis = 1.0 - (1.0 - 0.25) * ellipseThinning * 0.5;
+
         // Draw stretched blob (filled 10px circle)
         if (showBlob) {
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(angle);
-          ctx.scale(stretchAmount, stretchAmount - (stretchAmount - 1) * ellipseThinning);
+          ctx.scale(stretchAmount, shortAxis);
           ctx.beginPath();
           ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
@@ -623,7 +627,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(angle);
-          ctx.scale(innerStretchAmount, innerStretchAmount - (innerStretchAmount - 1) * ellipseThinning);
+          ctx.scale(innerStretchAmount, innerShortAxis);
           ctx.beginPath();
           ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
@@ -636,7 +640,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(angle);
-          ctx.scale(stretchAmount, stretchAmount - (stretchAmount - 1) * ellipseThinning);
+          ctx.scale(stretchAmount, shortAxis);
           
           // Draw border ring (outside face)
           if (borderWidth > 0) {
