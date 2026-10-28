@@ -64,6 +64,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     springY: 0,
     springVx: 0,
     springVy: 0,
+    springHistory: [] as { x: number; y: number; t: number }[],
     // Predictive state
     predictiveX: 0,
     predictiveY: 0,
@@ -340,7 +341,34 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           state.springY += state.springVy * subDt;
         }
         
-        drawCursor(ctx, state.springX, state.springY, state.angle, instantSpeed);
+        // Record spring position to history
+        const now = performance.now();
+        state.springHistory.push({ x: state.springX, y: state.springY, t: now });
+        
+        // Keep only last 10 positions
+        if (state.springHistory.length > 10) {
+          state.springHistory.shift();
+        }
+        
+        // Calculate spring speed and angle from spring history
+        let springSpeed = 0;
+        let springAngle = state.angle;
+        
+        if (state.springHistory.length >= 2) {
+          const last = state.springHistory[state.springHistory.length - 2];
+          const newest = state.springHistory[state.springHistory.length - 1];
+          const dx = newest.x - last.x;
+          const dy = newest.y - last.y;
+          const dt = newest.t - last.t;
+          if (dt > 0) {
+            springSpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
+            if (springSpeed > 0.5) {
+              springAngle = Math.atan2(dy, dx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.springX, state.springY, springAngle, springSpeed);
       } else if (interpolation === "kalman") {
         // Kalman Filter
         const processNoise = 0.1;
