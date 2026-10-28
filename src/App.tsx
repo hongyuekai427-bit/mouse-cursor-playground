@@ -15,6 +15,7 @@ export default function App() {
     enableClickAnimation: true,
     showOuterRing: true,
     showCircle: true,
+    showBlob: false,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -260,6 +261,20 @@ export default function App() {
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>CURSOR STYLE</span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={config.showBlob}
+                    onChange={(e) => setConfig({ ...config, showBlob: e.target.checked })}
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                      cursor: "pointer",
+                      accentColor: "#6366f1",
+                    }}
+                  />
+                  <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>BLOB</span>
+                </label>
                 <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                   <input
                     type="checkbox"

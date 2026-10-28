@@ -28,6 +28,7 @@ export interface CursorConfig {
   enableClickAnimation: boolean;
   showOuterRing: boolean;
   showCircle: boolean;
+  showBlob: boolean;
 }
 
 interface MotionBlurCursorProps {
@@ -404,6 +405,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const clickScale = state.clickScale;
       const showOuterRing = config.showOuterRing;
       const showCircle = config.showCircle;
+      const showBlob = config.showBlob;
       
       // Convert hex color to RGB
       const hex = cursorColor.replace('#', '');
@@ -436,6 +438,19 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
 
       if (stretchAmount > 1.05) {
+        // Draw stretched blob (filled 10px circle)
+        if (showBlob) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.scale(stretchAmount, 1 / Math.sqrt(stretchAmount));
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          ctx.fill();
+          ctx.restore();
+        }
+
         // Draw stretched circle (small dot)
         if (showCircle) {
           ctx.save();
@@ -474,6 +489,14 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           ctx.restore();
         }
       } else {
+        // Draw blob (filled 10px circle)
+        if (showBlob) {
+          ctx.beginPath();
+          ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+          ctx.fill();
+        }
+
         // Draw circle (small dot)
         if (showCircle) {
           ctx.beginPath();
