@@ -254,9 +254,29 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
       if (interpolation === "off") {
         // No interpolation - direct position
-        // Reset angle when velocity is 0 to return to original state
-        const displayAngle = instantSpeed > 0.5 ? state.angle : 0;
-        drawCursor(ctx, state.x, state.y, displayAngle, instantSpeed);
+        // Record display position to history
+        const now = performance.now();
+        state.renderHistory.push({ x: state.x, y: state.y, t: now });
+        if (state.renderHistory.length > 10) state.renderHistory.shift();
+        
+        // Calculate speed and angle from display position history
+        let displaySpeed = 0;
+        let displayAngle = 0;
+        if (state.renderHistory.length >= 2) {
+          const last = state.renderHistory[state.renderHistory.length - 2];
+          const newest = state.renderHistory[state.renderHistory.length - 1];
+          const dx = newest.x - last.x;
+          const dy = newest.y - last.y;
+          const dt = newest.t - last.t;
+          if (dt > 0) {
+            displaySpeed = (Math.sqrt(dx * dx + dy * dy) / dt) * 16.67;
+            if (displaySpeed > 0.5) {
+              displayAngle = Math.atan2(dy, dx);
+            }
+          }
+        }
+        
+        drawCursor(ctx, state.x, state.y, displayAngle, displaySpeed);
       } else if (interpolation === "lerp") {
         // Linear interpolation
         const lerpFactor = 0.35;
