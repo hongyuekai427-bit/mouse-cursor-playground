@@ -391,28 +391,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.oneEuroDx += alpha * (dx - state.oneEuroDx);
         state.oneEuroDy += alpha * (dy - state.oneEuroDy);
         
-        // Record position to history
-        state.oneEuroHistory.push({ x: state.oneEuroX, y: state.oneEuroY, t: now });
-        if (state.oneEuroHistory.length > 10) state.oneEuroHistory.shift();
-        
-        // Calculate speed and angle from history
-        let filterSpeed = 0;
-        let filterAngle = state.angle;
-        if (state.oneEuroHistory.length >= 2) {
-          const last = state.oneEuroHistory[state.oneEuroHistory.length - 2];
-          const newest = state.oneEuroHistory[state.oneEuroHistory.length - 1];
-          const hdx = newest.x - last.x;
-          const hdy = newest.y - last.y;
-          const hdt = newest.t - last.t;
-          if (hdt > 0) {
-            filterSpeed = (Math.sqrt(hdx * hdx + hdy * hdy) / hdt) * 16.67;
-            if (filterSpeed > 0.5) {
-              filterAngle = Math.atan2(hdy, hdx);
-            }
-          }
-        }
-        
-        drawCursor(ctx, state.oneEuroX, state.oneEuroY, filterAngle, filterSpeed);
+        // Use hidden cursor's speed and direction (instantSpeed and instantAngle)
+        drawCursor(ctx, state.oneEuroX, state.oneEuroY, instantAngle, instantSpeed);
       } else if (interpolation === "spring") {
         // Critically Damped Spring - responsiveness adjustable via config
         const dt = 1 / 60; // Fixed timestep
