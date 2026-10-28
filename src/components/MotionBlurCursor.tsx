@@ -162,6 +162,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     const handlePointerLeave = () => {
       state.targetOpacity = 0;
       state.smoothSpeed = 0;
+      state.clickScale = 1; // Reset click scale when leaving
+      state.clickVelocity = 0;
     };
 
     const handlePointerEnter = () => {
