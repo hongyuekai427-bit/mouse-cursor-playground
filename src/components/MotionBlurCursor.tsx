@@ -548,19 +548,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.restore();
       }
 
-      // Apply gooey filter to canvas if trail is enabled
-      if (config.enableGooeyTrail) {
-        ctx.filter = "url(#gooey-cursor-filter)";
-      }
-      
       // Update and draw gooey trail if enabled
       if (config.enableGooeyTrail) {
         updateAndDrawGooeyTrail(ctx, state, config, state.x, state.y, instantSpeed, instantAngle);
-      }
-      
-      // Reset filter after drawing
-      if (config.enableGooeyTrail) {
-        ctx.filter = "none";
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
@@ -637,23 +627,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         blob.y += blob.vy;
       }
       
-      // Apply gooey filter
+      // Apply gooey filter only to trail
       ctx.save();
       ctx.filter = "url(#gooey-cursor-filter)";
       
-      // Draw cursor blob (larger to connect with trail)
-      const cursorBlobRadius = baseRadius * 1.2;
-      ctx.beginPath();
-      ctx.arc(cursorX, cursorY, cursorBlobRadius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.9)`;
-      ctx.fill();
-      
-      // Draw trail blobs with decreasing size
+      // Draw trail blobs with decreasing size (no cursor blob to avoid amplification)
       for (let i = 0; i < state.trailBlobs.length; i++) {
         const blob = state.trailBlobs[i];
         const progress = i / state.trailBlobs.length;
-        const radius = baseRadius * (1 - progress * 0.6);
-        const alpha = 0.8 - progress * 0.4;
+        const radius = baseRadius * (1 - progress * 0.5);
+        const alpha = 0.9 - progress * 0.5;
         
         ctx.beginPath();
         ctx.arc(blob.x, blob.y, radius, 0, Math.PI * 2);
@@ -661,6 +644,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.fill();
       }
       
+      // Reset filter immediately after drawing trail
       ctx.restore();
     };
 
@@ -871,11 +855,11 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       >
         <defs>
           <filter id="gooey-cursor-filter">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
             <feColorMatrix
               in="blur"
               mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -6"
               result="goo"
             />
             <feComposite in="SourceGraphic" in2="goo" operator="atop" />
