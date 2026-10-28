@@ -562,11 +562,27 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       container: null as HTMLDivElement | null,
       cursor: null as HTMLDivElement | null,
       nodes: [] as HTMLDivElement[],
+      positions: [] as { x: number; y: number }[],
       initialized: false,
     };
 
     const initGooeyTrail = () => {
       if (gooeyElements.initialized) return;
+      
+      // Create SVG filter element
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.id = 'gooey-cursor-filter-svg';
+      svg.style.cssText = 'position: absolute; width: 0; height: 0; pointer-events: none;';
+      svg.innerHTML = `
+        <defs>
+          <filter id="gooey-cursor-filter">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -9" result="goo" />
+            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+          </filter>
+        </defs>
+      `;
+      document.body.appendChild(svg);
       
       // Create container with SVG filter
       const container = document.createElement('div');
@@ -586,6 +602,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       const cursorBlob = document.createElement('div');
       cursorBlob.style.cssText = `
         position: absolute;
+        top: 0;
+        left: 0;
         width: 20px;
         height: 20px;
         margin-top: -10px;
@@ -605,6 +623,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         const opacity = 1 - progress * 0.3;
         node.style.cssText = `
           position: absolute;
+          top: 0;
+          left: 0;
           width: 18px;
           height: 18px;
           margin-top: -9px;
@@ -621,6 +641,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       
       document.body.appendChild(container);
       
+      // Initialize persistent positions array
+      gooeyElements.positions = Array.from({ length: nodeCount + 1 }, () => ({ x: 0, y: 0 }));
+      
       gooeyElements.container = container;
       gooeyElements.cursor = cursorBlob;
       gooeyElements.initialized = true;
@@ -630,45 +653,43 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       if (!gooeyElements.initialized || !gooeyElements.cursor) return;
       
       const lerpFactor = 0.28;
-      const positions = [{ x: state.x, y: state.y }];
-      
-      // Initialize positions array
-      for (let i = 0; i < gooeyElements.nodes.length; i++) {
-        const prevPos = positions[i];
-        const currentPos = { x: prevPos.x, y: prevPos.y };
-        positions.push(currentPos);
-      }
       
       // Update cursor position with LERP
-      const cursorPos = positions[0];
-      cursorPos.x += (state.x - cursorPos.x) * lerpFactor;
-      cursorPos.y += (state.y - cursorPos.y) * lerpFactor;
+      gooeyElements.positions[0].x += (state.x - gooeyElements.positions[0].x) * lerpFactor;
+      gooeyElements.positions[0].y += (state.y - gooeyElements.positions[0].y) * lerpFactor;
       
       // Update trail nodes with LERP
-      for (let i = 1; i < positions.length; i++) {
-        const prevPos = positions[i - 1];
-        const currentPos = positions[i];
+      for (let i = 1; i < gooeyElements.positions.length; i++) {
+        const prevPos = gooeyElements.positions[i - 1];
+        const currentPos = gooeyElements.positions[i];
         currentPos.x += (prevPos.x - currentPos.x) * lerpFactor;
         currentPos.y += (prevPos.y - currentPos.y) * lerpFactor;
       }
       
       // Render cursor
+      const cursorPos = gooeyElements.positions[0];
       gooeyElements.cursor.style.transform = `translate3d(${cursorPos.x}px, ${cursorPos.y}px, 0)`;
       
       // Render trail nodes with scaling
       for (let i = 0; i < gooeyElements.nodes.length; i++) {
-        const pos = positions[i + 1];
+        const pos = gooeyElements.positions[i + 1];
         const scale = 1 - (i + 1) * 0.15;
         gooeyElements.nodes[i].style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) scale(${scale})`;
       }
     };
 
     const cleanupGooeyTrail = () => {
+      // Remove SVG filter
+      const svg = document.querySelector('svg#gooey-cursor-filter-svg');
+      if (svg) svg.remove();
+      
+      // Remove container
       if (gooeyElements.container) {
         gooeyElements.container.remove();
         gooeyElements.container = null;
         gooeyElements.cursor = null;
         gooeyElements.nodes = [];
+        gooeyElements.positions = [];
         gooeyElements.initialized = false;
       }
     };
@@ -875,42 +896,18 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
   }, []);
 
   return (
-    <>
-      <svg
-        style={{
-          position: "absolute",
-          width: 0,
-          height: 0,
-          pointerEvents: "none",
-        }}
-        aria-hidden="true"
-      >
-        <defs>
-          <filter id="gooey-cursor-filter">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
-            <feColorMatrix
-              in="blur"
-              mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 14 -6"
-              result="goo"
-            />
-            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
-          </filter>
-        </defs>
-      </svg>
-      <canvas
-        ref={canvasRef}
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100vw",
-          height: "100vh",
-          zIndex: 99999,
-          pointerEvents: "none",
-        }}
-        aria-hidden="true"
-      />
-    </>
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 99999,
+        pointerEvents: "none",
+      }}
+      aria-hidden="true"
+    />
   );
 }
