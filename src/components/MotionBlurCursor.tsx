@@ -391,19 +391,26 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         state.oneEuroDx += alpha * (dx - state.oneEuroDx);
         state.oneEuroDy += alpha * (dy - state.oneEuroDy);
         
+        // Check if pointer has stopped moving (based on time since last update)
+        const lastHistoryPoint = history.length > 0 ? history[history.length - 1] : null;
+        const timeSinceLastMove = lastHistoryPoint ? now - lastHistoryPoint.t : 0;
+        const pointerStopped = timeSinceLastMove > 50; // 50ms threshold
+        
         // Always check if One Euro position needs to catch up to actual position
         const distanceToActual = Math.sqrt(
           (state.x - state.oneEuroX) ** 2 + (state.y - state.oneEuroY) ** 2
         );
         
         // When pointer stops or is very close, snap to actual position
-        if (instantSpeed < 0.5 || distanceToActual < 1) {
+        if (pointerStopped || instantSpeed < 0.5 || distanceToActual < 1) {
           state.oneEuroX = state.x;
           state.oneEuroY = state.y;
         }
         
         // Use hidden cursor's speed and direction (instantSpeed and instantAngle)
-        drawCursor(ctx, state.oneEuroX, state.oneEuroY, instantAngle, instantSpeed);
+        // If pointer stopped, use 0 speed
+        const displaySpeed = pointerStopped ? 0 : instantSpeed;
+        drawCursor(ctx, state.oneEuroX, state.oneEuroY, instantAngle, displaySpeed);
       } else if (interpolation === "spring") {
         // Critically Damped Spring - responsiveness adjustable via config
         const dt = 1 / 60; // Fixed timestep
