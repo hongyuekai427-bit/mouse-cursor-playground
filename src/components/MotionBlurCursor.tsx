@@ -140,6 +140,10 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       inversionCanvas.style.width = `${window.innerWidth}px`;
       inversionCanvas.style.height = `${window.innerHeight}px`;
       inversionCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      
+      // Ensure both canvases have transparent backgrounds
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      inversionCtx.clearRect(0, 0, inversionCanvas.width, inversionCanvas.height);
     };
     resizeCanvas();
 
@@ -545,9 +549,14 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       // Draw color inversion on separate canvas if enabled
       inversionCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
       if (config.enableColorInversion) {
-        // Draw white shapes matching cursor on inversion canvas
-        // This will invert the background behind the cursor
+        // Fill entire canvas with white
+        inversionCtx.fillStyle = "rgba(255, 255, 255, 1)";
+        inversionCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+        
+        // Cut out cursor shape using destination-out
+        inversionCtx.globalCompositeOperation = "destination-out";
         drawCursorOnInversionCanvas(inversionCtx, state.x, state.y, instantAngle, instantSpeed);
+        inversionCtx.globalCompositeOperation = "source-over";
       }
 
       // Update hidden cursor crosshair position (DOM element on top layer)
@@ -1009,7 +1018,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
   return (
     <>
       <canvas
-        ref={inversionCanvasRef}
+        ref={canvasRef}
         style={{
           position: "fixed",
           top: 0,
@@ -1018,12 +1027,11 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           height: "100vh",
           zIndex: 99998,
           pointerEvents: "none",
-          mixBlendMode: "difference",
         }}
         aria-hidden="true"
       />
       <canvas
-        ref={canvasRef}
+        ref={inversionCanvasRef}
         style={{
           position: "fixed",
           top: 0,
@@ -1032,6 +1040,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           height: "100vh",
           zIndex: 99999,
           pointerEvents: "none",
+          mixBlendMode: "difference",
         }}
         aria-hidden="true"
       />
