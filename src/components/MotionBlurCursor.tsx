@@ -549,14 +549,9 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       // Draw color inversion on separate canvas if enabled
       inversionCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
       if (config.enableColorInversion) {
-        // Fill entire canvas with white
-        inversionCtx.fillStyle = "rgba(255, 255, 255, 1)";
-        inversionCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
-        
-        // Cut out cursor shape using destination-out
-        inversionCtx.globalCompositeOperation = "destination-out";
+        // Draw cursor shape in white on inversion canvas
+        // mix-blend-mode: difference will invert the background behind it
         drawCursorOnInversionCanvas(inversionCtx, state.x, state.y, instantAngle, instantSpeed);
-        inversionCtx.globalCompositeOperation = "source-over";
       }
 
       // Update hidden cursor crosshair position (DOM element on top layer)
