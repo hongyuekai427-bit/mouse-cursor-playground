@@ -279,7 +279,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       }
 
       const config = configRef.current;
-      const interpolation = config.interpolation;
+      // Disable interpolation when gooey trail is enabled
+      const interpolation = config.enableGooeyTrail ? "off" : config.interpolation;
 
       if (interpolation === "off") {
         // No interpolation - direct position
@@ -519,7 +520,15 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed, state.opacity);
       }
 
-      // Draw hidden cursor if enabled
+      // Draw gooey trail if enabled
+      if (config.enableGooeyTrail) {
+        initGooeyTrail();
+        updateGooeyTrail();
+      } else {
+        cleanupGooeyTrail();
+      }
+
+      // Draw hidden cursor if enabled (after gooey trail to overlay everything)
       if (config.showHiddenCursor) {
         ctx.save();
         ctx.globalAlpha = 0.5;
@@ -542,14 +551,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         ctx.stroke();
         
         ctx.restore();
-      }
-
-      // Draw gooey trail if enabled
-      if (config.enableGooeyTrail) {
-        initGooeyTrail();
-        updateGooeyTrail();
-      } else {
-        cleanupGooeyTrail();
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
