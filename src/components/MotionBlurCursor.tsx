@@ -540,17 +540,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
       }
 
-      // Update color inversion layer position
-      const inversionLayer = document.getElementById('color-inversion-layer');
-      if (inversionLayer) {
-        if (config.enableColorInversion) {
-          inversionLayer.style.opacity = "1";
-          inversionLayer.style.setProperty('--cursor-x', `${state.x}px`);
-          inversionLayer.style.setProperty('--cursor-y', `${state.y}px`);
-        } else {
-          inversionLayer.style.opacity = "0";
-        }
-      }
+
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
@@ -868,6 +858,81 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
       }
 
+      // Apply color inversion if enabled
+      if (config.enableColorInversion) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'difference';
+        
+        // Draw white in cursor shape to invert colors
+        if (stretchAmount > 1.05) {
+          // Calculate short axis for stretched shapes
+          const speedFactor = Math.min(1, (speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold));
+          const shortAxis = 1.0 - speedFactor * (1.0 - 0.25) * ellipseThinning;
+          const innerShortAxis = 1.0 - speedFactor * (1.0 - 0.25) * ellipseThinning * 0.5;
+          
+          if (showBlob) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.scale(stretchAmount, shortAxis);
+            ctx.beginPath();
+            ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fill();
+            ctx.restore();
+          }
+          
+          if (showCircle) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.scale(innerStretchAmount, innerShortAxis);
+            ctx.beginPath();
+            ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fill();
+            ctx.restore();
+          }
+          
+          if (showOuterRing) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.scale(stretchAmount, shortAxis);
+            ctx.beginPath();
+            ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * alpha})`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+          }
+        } else {
+          if (showBlob) {
+            ctx.beginPath();
+            ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fill();
+          }
+          
+          if (showCircle) {
+            ctx.beginPath();
+            ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fill();
+          }
+          
+          if (showOuterRing) {
+            ctx.beginPath();
+            ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * alpha})`;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+        }
+        
+        ctx.restore();
+      }
+
       ctx.restore();
     };
 
@@ -910,24 +975,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }}
         aria-hidden="true"
       />
-      <div
-        id="color-inversion-layer"
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100vw",
-          height: "100vh",
-          zIndex: 99997,
-          pointerEvents: "none",
-          opacity: 0,
-          transition: "opacity 0.15s",
-          filter: "invert(1)",
-          mask: "radial-gradient(circle 40px at var(--cursor-x, 50%) var(--cursor-y, 50%), black 100%, transparent 100%)",
-          WebkitMask: "radial-gradient(circle 40px at var(--cursor-x, 50%) var(--cursor-y, 50%), black 100%, transparent 100%)",
-          backgroundColor: "transparent",
-        }}
-      />
+
       <div
         id="hidden-cursor-crosshair"
         style={{
