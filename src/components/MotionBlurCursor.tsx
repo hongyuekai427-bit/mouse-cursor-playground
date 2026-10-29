@@ -545,8 +545,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       if (inversionLayer) {
         if (config.enableColorInversion) {
           inversionLayer.style.opacity = "1";
-          inversionLayer.style.left = `${state.x}px`;
-          inversionLayer.style.top = `${state.y}px`;
+          inversionLayer.style.setProperty('--cursor-x', `${state.x}px`);
+          inversionLayer.style.setProperty('--cursor-y', `${state.y}px`);
         } else {
           inversionLayer.style.opacity = "0";
         }
@@ -916,16 +916,16 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           position: "fixed",
           top: 0,
           left: 0,
-          width: "80px",
-          height: "80px",
-          borderRadius: "50%",
+          width: "100vw",
+          height: "100vh",
           zIndex: 99997,
           pointerEvents: "none",
           opacity: 0,
           transition: "opacity 0.15s",
-          mixBlendMode: "difference",
-          backgroundColor: "#ffffff",
-          transform: "translate(-50%, -50%)",
+          filter: "invert(1)",
+          mask: "radial-gradient(circle 40px at var(--cursor-x, 50%) var(--cursor-y, 50%), black 100%, transparent 100%)",
+          WebkitMask: "radial-gradient(circle 40px at var(--cursor-x, 50%) var(--cursor-y, 50%), black 100%, transparent 100%)",
+          backgroundColor: "transparent",
         }}
       />
       <div
