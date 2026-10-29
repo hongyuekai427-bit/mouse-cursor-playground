@@ -34,6 +34,7 @@ export interface CursorConfig {
   ellipseThinning: number;
   showHiddenCursor: boolean;
   enableGooeyTrail: boolean;
+  enableColorInversion: boolean;
 }
 
 interface MotionBlurCursorProps {
@@ -894,6 +895,7 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           height: "100vh",
           zIndex: 99999,
           pointerEvents: "none",
+          mixBlendMode: config.enableColorInversion ? "difference" : "normal",
         }}
         aria-hidden="true"
       />
