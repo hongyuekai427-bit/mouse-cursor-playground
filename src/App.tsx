@@ -6,7 +6,7 @@ export default function App() {
     ellipseMultiplier: 1,
     backgroundColor: "#000000",
     interpolation: "off",
-    cursorColor: "#6366f1",
+    cursorColor: "#ffffff",
     enableStretch: true,
     borderColor: "#000000",
     borderWidth: 1.5,
