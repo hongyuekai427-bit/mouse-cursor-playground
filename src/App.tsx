@@ -20,6 +20,7 @@ export default function App() {
     ellipseThinning: 0.5,
     showHiddenCursor: false,
     enableGooeyTrail: false,
+    enableColorInversion: false,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -394,6 +395,23 @@ export default function App() {
                   }}
                 />
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE GOOEY TRAIL</span>
+              </label>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={config.enableColorInversion}
+                  onChange={(e) => setConfig({ ...config, enableColorInversion: e.target.checked })}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    cursor: "pointer",
+                    accentColor: "#6366f1",
+                  }}
+                />
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>COLOR INVERSION</span>
               </label>
             </div>
 

@@ -34,6 +34,7 @@ export interface CursorConfig {
   ellipseThinning: number;
   showHiddenCursor: boolean;
   enableGooeyTrail: boolean;
+  enableColorInversion: boolean;
 }
 
 interface MotionBlurCursorProps {
@@ -539,6 +540,18 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
       }
 
+      // Update color inversion layer position
+      const inversionLayer = document.getElementById('color-inversion-layer');
+      if (inversionLayer) {
+        if (config.enableColorInversion) {
+          inversionLayer.style.opacity = "1";
+          inversionLayer.style.left = `${state.x}px`;
+          inversionLayer.style.top = `${state.y}px`;
+        } else {
+          inversionLayer.style.opacity = "0";
+        }
+      }
+
       animFrameRef.current = requestAnimationFrame(animate);
     };
 
@@ -896,6 +909,24 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           pointerEvents: "none",
         }}
         aria-hidden="true"
+      />
+      <div
+        id="color-inversion-layer"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "80px",
+          height: "80px",
+          borderRadius: "50%",
+          zIndex: 99997,
+          pointerEvents: "none",
+          opacity: 0,
+          transition: "opacity 0.15s",
+          mixBlendMode: "difference",
+          backgroundColor: "#ffffff",
+          transform: "translate(-50%, -50%)",
+        }}
       />
       <div
         id="hidden-cursor-crosshair"
