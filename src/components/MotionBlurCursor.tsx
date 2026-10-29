@@ -43,6 +43,7 @@ interface MotionBlurCursorProps {
 
 export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const inversionCanvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const reducedMotionRef = useRef(false);
   const configRef = useRef(config);
@@ -111,6 +112,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const inversionCanvas = inversionCanvasRef.current;
+    if (!inversionCanvas) return;
+    
+    const inversionCtx = inversionCanvas.getContext("2d");
+    if (!inversionCtx) return;
+
     const state = stateRef.current;
 
     const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -127,6 +134,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       canvas.style.width = `${window.innerWidth}px`;
       canvas.style.height = `${window.innerHeight}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      
+      inversionCanvas.width = window.innerWidth * dpr;
+      inversionCanvas.height = window.innerHeight * dpr;
+      inversionCanvas.style.width = `${window.innerWidth}px`;
+      inversionCanvas.style.height = `${window.innerHeight}px`;
+      inversionCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resizeCanvas();
 
@@ -529,6 +542,14 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         cleanupGooeyTrail();
       }
 
+      // Draw color inversion on separate canvas if enabled
+      inversionCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      if (config.enableColorInversion) {
+        // Draw white shapes matching cursor on inversion canvas
+        // This will invert the background behind the cursor
+        drawCursorOnInversionCanvas(inversionCtx, state.x, state.y, instantAngle, instantSpeed);
+      }
+
       // Update hidden cursor crosshair position (DOM element on top layer)
       const crosshair = document.getElementById('hidden-cursor-crosshair');
       if (crosshair) {
@@ -539,8 +560,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
           crosshair.style.opacity = "0";
         }
       }
-
-
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
@@ -681,6 +700,108 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         gooeyElements.nodes = [];
         gooeyElements.positions = [];
         gooeyElements.initialized = false;
+      }
+    };
+
+    const drawCursorOnInversionCanvas = (
+      ctx: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      angle: number,
+      speed: number
+    ) => {
+      const config = configRef.current;
+      const baseRadius = 3;
+      const ringRadius = 10;
+      const multiplier = config.ellipseMultiplier;
+      const enableStretch = config.enableStretch;
+      const showOuterRing = config.showOuterRing;
+      const showCircle = config.showCircle;
+      const showBlob = config.showBlob;
+      const ellipseThinning = config.ellipseThinning;
+
+      // Stretch based on speed (only if enabled)
+      const stretchThreshold = 8;
+      const maxStretchSpeed = 40;
+      let stretchAmount = 1;
+      if (enableStretch && speed > stretchThreshold) {
+        const t = Math.min(1, (speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold));
+        stretchAmount = 1 + t * 1.5 * multiplier;
+      }
+
+      // Inner dot stretches at 0.5x the outer ring
+      const innerStretchAmount = 1 + (stretchAmount - 1) * 0.5;
+
+      if (stretchAmount > 1.05) {
+        // Calculate short axis for stretched shapes
+        const speedFactor = Math.min(1, (speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold));
+        const shortAxis = 1.0 - speedFactor * (1.0 - 0.25) * ellipseThinning;
+        const innerShortAxis = 1.0 - speedFactor * (1.0 - 0.25) * ellipseThinning * 0.5;
+
+        // Draw stretched blob
+        if (showBlob) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.scale(stretchAmount, shortAxis);
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255, 255, 255, 1)";
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Draw stretched circle
+        if (showCircle) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.scale(innerStretchAmount, innerShortAxis);
+          ctx.beginPath();
+          ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255, 255, 255, 1)";
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Draw stretched outer ring
+        if (showOuterRing) {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.scale(stretchAmount, shortAxis);
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.restore();
+        }
+      } else {
+        // Draw blob
+        if (showBlob) {
+          ctx.beginPath();
+          ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255, 255, 255, 1)";
+          ctx.fill();
+        }
+
+        // Draw circle
+        if (showCircle) {
+          ctx.beginPath();
+          ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255, 255, 255, 1)";
+          ctx.fill();
+        }
+
+        // Draw outer ring
+        if (showOuterRing) {
+          ctx.beginPath();
+          ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
       }
     };
 
@@ -858,81 +979,6 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         }
       }
 
-      // Apply color inversion if enabled
-      if (config.enableColorInversion) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'difference';
-        
-        // Draw white in cursor shape to invert colors
-        if (stretchAmount > 1.05) {
-          // Calculate short axis for stretched shapes
-          const speedFactor = Math.min(1, (speed - stretchThreshold) / (maxStretchSpeed - stretchThreshold));
-          const shortAxis = 1.0 - speedFactor * (1.0 - 0.25) * ellipseThinning;
-          const innerShortAxis = 1.0 - speedFactor * (1.0 - 0.25) * ellipseThinning * 0.5;
-          
-          if (showBlob) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(angle);
-            ctx.scale(stretchAmount, shortAxis);
-            ctx.beginPath();
-            ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.fill();
-            ctx.restore();
-          }
-          
-          if (showCircle) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(angle);
-            ctx.scale(innerStretchAmount, innerShortAxis);
-            ctx.beginPath();
-            ctx.arc(0, 0, baseRadius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.fill();
-            ctx.restore();
-          }
-          
-          if (showOuterRing) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(angle);
-            ctx.scale(stretchAmount, shortAxis);
-            ctx.beginPath();
-            ctx.arc(0, 0, ringRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * alpha})`;
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-            ctx.restore();
-          }
-        } else {
-          if (showBlob) {
-            ctx.beginPath();
-            ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.fill();
-          }
-          
-          if (showCircle) {
-            ctx.beginPath();
-            ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.fill();
-          }
-          
-          if (showOuterRing) {
-            ctx.beginPath();
-            ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * alpha})`;
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-          }
-        }
-        
-        ctx.restore();
-      }
-
       ctx.restore();
     };
 
@@ -962,6 +1008,20 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
 
   return (
     <>
+      <canvas
+        ref={inversionCanvasRef}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 99998,
+          pointerEvents: "none",
+          mixBlendMode: "difference",
+        }}
+        aria-hidden="true"
+      />
       <canvas
         ref={canvasRef}
         style={{
