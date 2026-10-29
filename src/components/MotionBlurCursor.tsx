@@ -33,6 +33,8 @@ export interface CursorConfig {
   springStiffness: number;
   ellipseThinning: number;
   showHiddenCursor: boolean;
+  enableGooeyTrail: boolean;
+  enableColorInversion: boolean;
 }
 
 interface MotionBlurCursorProps {
@@ -278,7 +280,8 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       }
 
       const config = configRef.current;
-      const interpolation = config.interpolation;
+      // Disable interpolation when gooey trail is enabled
+      const interpolation = config.enableGooeyTrail ? "off" : config.interpolation;
 
       if (interpolation === "off") {
         // No interpolation - direct position
@@ -518,35 +521,166 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         drawCursor(ctx, state.timeBasedX, state.timeBasedY, filterAngle, filterSpeed, state.opacity);
       }
 
-      // Draw hidden cursor if enabled
-      if (config.showHiddenCursor) {
-        ctx.save();
-        ctx.globalAlpha = 0.5;
-        
-        // Draw a small cross to mark the hidden cursor position
-        const crossSize = 5;
-        ctx.strokeStyle = "#ff0000";
-        ctx.lineWidth = 2;
-        
-        // Horizontal line
-        ctx.beginPath();
-        ctx.moveTo(state.x - crossSize, state.y);
-        ctx.lineTo(state.x + crossSize, state.y);
-        ctx.stroke();
-        
-        // Vertical line
-        ctx.beginPath();
-        ctx.moveTo(state.x, state.y - crossSize);
-        ctx.lineTo(state.x, state.y + crossSize);
-        ctx.stroke();
-        
-        ctx.restore();
+      // Draw gooey trail if enabled
+      if (config.enableGooeyTrail) {
+        initGooeyTrail();
+        updateGooeyTrail();
+      } else {
+        cleanupGooeyTrail();
+      }
+
+      // Update hidden cursor crosshair position (DOM element on top layer)
+      const crosshair = document.getElementById('hidden-cursor-crosshair');
+      if (crosshair) {
+        if (config.showHiddenCursor) {
+          crosshair.style.opacity = "1";
+          crosshair.style.transform = `translate(${state.x - 5}px, ${state.y - 5}px)`;
+        } else {
+          crosshair.style.opacity = "0";
+        }
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
 
 
+
+    // DOM-based gooey trail state
+    const gooeyElements = {
+      container: null as HTMLDivElement | null,
+      cursor: null as HTMLDivElement | null,
+      nodes: [] as HTMLDivElement[],
+      positions: [] as { x: number; y: number }[],
+      initialized: false,
+    };
+
+    const initGooeyTrail = () => {
+      if (gooeyElements.initialized) return;
+      
+      // Create SVG filter element
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.id = 'gooey-cursor-filter-svg';
+      svg.style.cssText = 'position: absolute; width: 0; height: 0; pointer-events: none;';
+      svg.innerHTML = `
+        <defs>
+          <filter id="gooey-cursor-filter">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -9" result="goo" />
+            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+          </filter>
+        </defs>
+      `;
+      document.body.appendChild(svg);
+      
+      // Create container with SVG filter
+      const container = document.createElement('div');
+      container.id = 'gooey-cursor-container';
+      container.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 99998;
+        filter: url(#gooey-cursor-filter);
+      `;
+      
+      // Create cursor blob
+      const cursorBlob = document.createElement('div');
+      cursorBlob.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 20px;
+        height: 20px;
+        margin-top: -10px;
+        margin-left: -10px;
+        border-radius: 50%;
+        background: ${configRef.current.cursorColor};
+        will-change: transform;
+        pointer-events: none;
+      `;
+      container.appendChild(cursorBlob);
+      
+      // Create trail nodes
+      const nodeCount = 8;
+      for (let i = 0; i < nodeCount; i++) {
+        const node = document.createElement('div');
+        const progress = (i + 1) / (nodeCount + 1);
+        const opacity = 1 - progress * 0.3;
+        node.style.cssText = `
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 18px;
+          height: 18px;
+          margin-top: -9px;
+          margin-left: -9px;
+          border-radius: 50%;
+          background: ${configRef.current.cursorColor};
+          opacity: ${opacity};
+          will-change: transform;
+          pointer-events: none;
+        `;
+        container.appendChild(node);
+        gooeyElements.nodes.push(node);
+      }
+      
+      document.body.appendChild(container);
+      
+      // Initialize persistent positions array
+      gooeyElements.positions = Array.from({ length: nodeCount + 1 }, () => ({ x: 0, y: 0 }));
+      
+      gooeyElements.container = container;
+      gooeyElements.cursor = cursorBlob;
+      gooeyElements.initialized = true;
+    };
+
+    const updateGooeyTrail = () => {
+      if (!gooeyElements.initialized || !gooeyElements.cursor) return;
+      
+      const lerpFactor = 0.28;
+      
+      // Update cursor position with LERP
+      gooeyElements.positions[0].x += (state.x - gooeyElements.positions[0].x) * lerpFactor;
+      gooeyElements.positions[0].y += (state.y - gooeyElements.positions[0].y) * lerpFactor;
+      
+      // Update trail nodes with LERP
+      for (let i = 1; i < gooeyElements.positions.length; i++) {
+        const prevPos = gooeyElements.positions[i - 1];
+        const currentPos = gooeyElements.positions[i];
+        currentPos.x += (prevPos.x - currentPos.x) * lerpFactor;
+        currentPos.y += (prevPos.y - currentPos.y) * lerpFactor;
+      }
+      
+      // Render cursor
+      const cursorPos = gooeyElements.positions[0];
+      gooeyElements.cursor.style.transform = `translate3d(${cursorPos.x}px, ${cursorPos.y}px, 0)`;
+      
+      // Render trail nodes with scaling
+      for (let i = 0; i < gooeyElements.nodes.length; i++) {
+        const pos = gooeyElements.positions[i + 1];
+        const scale = 1 - (i + 1) * 0.15;
+        gooeyElements.nodes[i].style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) scale(${scale})`;
+      }
+    };
+
+    const cleanupGooeyTrail = () => {
+      // Remove SVG filter
+      const svg = document.querySelector('svg#gooey-cursor-filter-svg');
+      if (svg) svg.remove();
+      
+      // Remove container
+      if (gooeyElements.container) {
+        gooeyElements.container.remove();
+        gooeyElements.container = null;
+        gooeyElements.cursor = null;
+        gooeyElements.nodes = [];
+        gooeyElements.positions = [];
+        gooeyElements.initialized = false;
+      }
+    };
 
     const drawCursor = (
       ctx: CanvasRenderingContext2D,
@@ -557,6 +691,12 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       alpha: number = 1
     ) => {
       const config = configRef.current;
+      
+      // Don't draw cursor when gooey trail is enabled
+      if (config.enableGooeyTrail) {
+        return;
+      }
+      
       const baseRadius = 3;
       const ringRadius = 10;
       const multiplier = config.ellipseMultiplier;
@@ -739,22 +879,60 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
       window.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("resize", resizeCanvas);
       motionQuery.removeEventListener("change", handleMotionChange);
+      cleanupGooeyTrail();
     };
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        zIndex: 99999,
-        pointerEvents: "none",
-      }}
-      aria-hidden="true"
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 99999,
+          pointerEvents: "none",
+          mixBlendMode: config.enableColorInversion ? "difference" : "normal",
+        }}
+        aria-hidden="true"
+      />
+
+      <div
+        id="hidden-cursor-crosshair"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "10px",
+          height: "10px",
+          zIndex: 100000,
+          pointerEvents: "none",
+          opacity: 0,
+          transition: "opacity 0.15s",
+        }}
+      >
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          left: "0",
+          width: "10px",
+          height: "2px",
+          backgroundColor: "#ff0000",
+          transform: "translateY(-50%)",
+        }} />
+        <div style={{
+          position: "absolute",
+          top: "0",
+          left: "50%",
+          width: "2px",
+          height: "10px",
+          backgroundColor: "#ff0000",
+          transform: "translateX(-50%)",
+        }} />
+      </div>
+    </>
   );
 }

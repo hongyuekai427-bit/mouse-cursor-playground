@@ -6,19 +6,21 @@ export default function App() {
     ellipseMultiplier: 1,
     backgroundColor: "#000000",
     interpolation: "off",
-    cursorColor: "#6366f1",
+    cursorColor: "#ffffff",
     enableStretch: true,
     borderColor: "#000000",
     borderWidth: 1.5,
     clickShrink: 0.3,
     clickSpring: 0.15,
     enableClickAnimation: true,
-    showOuterRing: true,
-    showCircle: true,
-    showBlob: false,
+    showOuterRing: false,
+    showCircle: false,
+    showBlob: true,
     springStiffness: 900,
     ellipseThinning: 0.5,
     showHiddenCursor: false,
+    enableGooeyTrail: false,
+    enableColorInversion: false,
   });
   const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -117,20 +119,20 @@ export default function App() {
                   INTERPOLATION
                 </span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px", opacity: config.enableGooeyTrail ? 0.3 : 1, pointerEvents: config.enableGooeyTrail ? "none" : "auto" }}>
                 {(["off", "lerp", "oneeuro", "spring", "kalman", "timebased"] as const).map((method) => (
                   <button
                     key={method}
-                    onClick={() => setConfig({ ...config, interpolation: method })}
+                    onClick={() => !config.enableGooeyTrail && setConfig({ ...config, interpolation: method })}
                     style={{
                       padding: "8px 6px",
                       borderRadius: "6px",
-                      backgroundColor: config.interpolation === method ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                      border: config.interpolation === method ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
-                      color: config.interpolation === method ? "#a5b4fc" : "#9ca3af",
+                      backgroundColor: config.interpolation === method && !config.enableGooeyTrail ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                      border: config.interpolation === method && !config.enableGooeyTrail ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
+                      color: config.interpolation === method && !config.enableGooeyTrail ? "#a5b4fc" : "#9ca3af",
                       fontSize: "10px",
                       fontFamily: "monospace",
-                      cursor: "pointer",
+                      cursor: config.enableGooeyTrail ? "not-allowed" : "pointer",
                       transition: "all 0.2s",
                       textTransform: "uppercase",
                     }}
@@ -139,6 +141,11 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              {config.enableGooeyTrail && (
+                <div style={{ marginTop: "8px", fontSize: "10px", fontFamily: "monospace", color: "#f59e0b", textAlign: "center" }}>
+                  ⚠ DISABLED IN GOOEY MODE
+                </div>
+              )}
               {config.interpolation === "spring" && (
                 <div style={{ marginTop: "12px" }}>
                   <SliderRow
@@ -283,9 +290,12 @@ export default function App() {
               </label>
             </div>
 
-            <div style={{ marginTop: "16px" }}>
+            <div style={{ marginTop: "16px", opacity: config.enableGooeyTrail ? 0.3 : 1, pointerEvents: config.enableGooeyTrail ? "none" : "auto" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>CURSOR STYLE</span>
+                {config.enableGooeyTrail && (
+                  <span style={{ color: "#6b7280", fontSize: "10px", fontFamily: "monospace" }}>DISABLED IN GOOEY MODE</span>
+                )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
@@ -368,6 +378,40 @@ export default function App() {
                   }}
                 />
                 <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>SHOW HIDDEN CURSOR</span>
+              </label>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={config.enableGooeyTrail}
+                  onChange={(e) => setConfig({ ...config, enableGooeyTrail: e.target.checked })}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    cursor: "pointer",
+                    accentColor: "#6366f1",
+                  }}
+                />
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>ENABLE GOOEY TRAIL</span>
+              </label>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={config.enableColorInversion}
+                  onChange={(e) => setConfig({ ...config, enableColorInversion: e.target.checked })}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    cursor: "pointer",
+                    accentColor: "#6366f1",
+                  }}
+                />
+                <span style={{ color: "#9ca3af", fontSize: "11px", fontFamily: "monospace" }}>COLOR INVERSION</span>
               </label>
             </div>
 
