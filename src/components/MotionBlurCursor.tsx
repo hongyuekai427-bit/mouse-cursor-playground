@@ -528,29 +528,15 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
         cleanupGooeyTrail();
       }
 
-      // Draw hidden cursor if enabled (after gooey trail to overlay everything)
-      if (config.showHiddenCursor) {
-        ctx.save();
-        ctx.globalAlpha = 0.5;
-        
-        // Draw a small cross to mark the hidden cursor position
-        const crossSize = 5;
-        ctx.strokeStyle = "#ff0000";
-        ctx.lineWidth = 2;
-        
-        // Horizontal line
-        ctx.beginPath();
-        ctx.moveTo(state.x - crossSize, state.y);
-        ctx.lineTo(state.x + crossSize, state.y);
-        ctx.stroke();
-        
-        // Vertical line
-        ctx.beginPath();
-        ctx.moveTo(state.x, state.y - crossSize);
-        ctx.lineTo(state.x, state.y + crossSize);
-        ctx.stroke();
-        
-        ctx.restore();
+      // Update hidden cursor crosshair position (DOM element on top layer)
+      const crosshair = document.getElementById('hidden-cursor-crosshair');
+      if (crosshair) {
+        if (config.showHiddenCursor) {
+          crosshair.style.opacity = "1";
+          crosshair.style.transform = `translate(${state.x - 5}px, ${state.y - 5}px)`;
+        } else {
+          crosshair.style.opacity = "0";
+        }
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
@@ -897,18 +883,53 @@ export default function MotionBlurCursor({ config }: MotionBlurCursorProps) {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        zIndex: 99999,
-        pointerEvents: "none",
-      }}
-      aria-hidden="true"
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 99999,
+          pointerEvents: "none",
+        }}
+        aria-hidden="true"
+      />
+      <div
+        id="hidden-cursor-crosshair"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "10px",
+          height: "10px",
+          zIndex: 100000,
+          pointerEvents: "none",
+          opacity: 0,
+          transition: "opacity 0.15s",
+        }}
+      >
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          left: "0",
+          width: "10px",
+          height: "2px",
+          backgroundColor: "#ff0000",
+          transform: "translateY(-50%)",
+        }} />
+        <div style={{
+          position: "absolute",
+          top: "0",
+          left: "50%",
+          width: "2px",
+          height: "10px",
+          backgroundColor: "#ff0000",
+          transform: "translateX(-50%)",
+        }} />
+      </div>
+    </>
   );
 }

@@ -118,20 +118,20 @@ export default function App() {
                   INTERPOLATION
                 </span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px", opacity: config.enableGooeyTrail ? 0.3 : 1, pointerEvents: config.enableGooeyTrail ? "none" : "auto" }}>
                 {(["off", "lerp", "oneeuro", "spring", "kalman", "timebased"] as const).map((method) => (
                   <button
                     key={method}
-                    onClick={() => setConfig({ ...config, interpolation: method })}
+                    onClick={() => !config.enableGooeyTrail && setConfig({ ...config, interpolation: method })}
                     style={{
                       padding: "8px 6px",
                       borderRadius: "6px",
-                      backgroundColor: config.interpolation === method ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                      border: config.interpolation === method ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
-                      color: config.interpolation === method ? "#a5b4fc" : "#9ca3af",
+                      backgroundColor: config.interpolation === method && !config.enableGooeyTrail ? "rgba(99, 102, 241, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                      border: config.interpolation === method && !config.enableGooeyTrail ? "1px solid #6366f1" : "1px solid rgba(255,255,255,0.1)",
+                      color: config.interpolation === method && !config.enableGooeyTrail ? "#a5b4fc" : "#9ca3af",
                       fontSize: "10px",
                       fontFamily: "monospace",
-                      cursor: "pointer",
+                      cursor: config.enableGooeyTrail ? "not-allowed" : "pointer",
                       transition: "all 0.2s",
                       textTransform: "uppercase",
                     }}
@@ -140,6 +140,11 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              {config.enableGooeyTrail && (
+                <div style={{ marginTop: "8px", fontSize: "10px", fontFamily: "monospace", color: "#f59e0b", textAlign: "center" }}>
+                  ⚠ DISABLED IN GOOEY MODE
+                </div>
+              )}
               {config.interpolation === "spring" && (
                 <div style={{ marginTop: "12px" }}>
                   <SliderRow
